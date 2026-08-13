@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { X, Save, Trash2, AlertCircle, Camera, FileText } from 'lucide-react';
 import type { Invoice, InvoiceStatus, PaymentMethod } from './InvoiceDashboard';
+import type { Company } from '../api';
 
 interface EditInvoiceModalProps {
   invoice: Invoice;
@@ -9,9 +10,10 @@ interface EditInvoiceModalProps {
   onClose: () => void;
   onImageClick: (url: string) => void;
   existingClients: string[];
+  companies: Company[];
 }
 
-export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, existingClients }) => {
+export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, existingClients, companies }) => {
   const [clientName, setClientName] = useState(invoice.clientName);
   const [invoiceCode, setInvoiceCode] = useState(invoice.invoiceCode);
   const [totalAmount, setTotalAmount] = useState<number | ''>(invoice.totalAmount);
@@ -160,7 +162,7 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
               style={inputStyle}
             />
             <datalist id="existing-clients-edit">
-              {existingClients.map(client => (
+              {Array.from(new Set([...companies.map(c => c.name), ...existingClients])).sort().map(client => (
                 <option key={client} value={client} />
               ))}
             </datalist>

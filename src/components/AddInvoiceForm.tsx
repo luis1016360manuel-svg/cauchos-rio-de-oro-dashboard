@@ -1,14 +1,16 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { X, PlusCircle, AlertCircle, Camera, FileText } from 'lucide-react';
 import type { Invoice, InvoiceStatus, PaymentMethod } from './InvoiceDashboard';
+import type { Company } from '../api';
 
 interface AddInvoiceFormProps {
   onAdd: (newInvoice: Invoice, receiptFile: File | null, proofFile: File | null) => void;
   onClose: () => void;
   existingClients: string[];
+  companies: Company[];
 }
 
-export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, existingClients }) => {
+export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, existingClients, companies }) => {
   const [clientName, setClientName] = useState('');
   const [invoiceCode, setInvoiceCode] = useState('');
   const [totalAmount, setTotalAmount] = useState<number | ''>('');
@@ -155,7 +157,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
               placeholder="e.g. Stark Industries"
             />
             <datalist id="existing-clients">
-              {existingClients.map(client => (
+              {Array.from(new Set([...companies.map(c => c.name), ...existingClients])).sort().map(client => (
                 <option key={client} value={client} />
               ))}
             </datalist>

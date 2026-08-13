@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle } from 'lucide-react';
-import { fetchInvoices, addInvoice, updateInvoice, deleteInvoice } from '../api';
+import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2 } from 'lucide-react';
+import { fetchInvoices, addInvoice, updateInvoice, deleteInvoice, fetchCompanies, addCompany, deleteCompany } from '../api';
+import type { Company } from '../api';
 import { AddInvoiceForm } from './AddInvoiceForm';
 import { EditInvoiceModal } from './EditInvoiceModal';
 import { ImageModal } from './ImageModal';
+import { CompanyManagerModal } from './CompanyManagerModal';
 
 // --- TypeScript Interfaces ---
 
@@ -41,10 +43,12 @@ const mockInvoices: Invoice[] = [
 
 export const InvoiceDashboard: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<InvoiceStatus | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
@@ -52,14 +56,22 @@ export const InvoiceDashboard: React.FC = () => {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const data = await fetchInvoices();
-        if (data && data.length > 0) {
-          setInvoices(data);
+        const [invData, compData] = await Promise.all([
+          fetchInvoices().catch(() => null),
+          fetchCompanies().catch(() => null)
+        ]);
+
+        if (invData && invData.length > 0) {
+          setInvoices(invData);
         } else {
           setInvoices(mockInvoices);
         }
+
+        if (compData) {
+          setCompanies(compData);
+        }
       } catch (e) {
-        console.error('Failed to load invoices from API', e);
+        console.error('Failed to load data', e);
         setInvoices(mockInvoices);
       } finally {
         setIsLoading(false);
@@ -108,6 +120,18 @@ export const InvoiceDashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAddCompany = async (newComp: Omit<Company, 'id'>) => {
+    const tempId = `COMP-${Date.now()}`;
+    const compToSave = { ...newComp, id: tempId };
+    const saved = await addCompany(compToSave);
+    setCompanies(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+  };
+
+  const handleDeleteCompany = async (id: string) => {
+    await deleteCompany(id);
+    setCompanies(prev => prev.filter(c => c.id !== id));
   };
 
   // Filtering Logic
@@ -267,6 +291,17 @@ export const InvoiceDashboard: React.FC = () => {
               Track, categorize, and manage your client billing lifecycle.
             </p>
             <button 
+              onClick={() => setIsCompanyModalOpen(true)}
+              style={{ 
+                marginTop: '16px', padding: '10px 24px', borderRadius: 'var(--radius-full)', 
+                background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--border-color)', 
+                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <Building2 size={18} />
+              Manage Companies
+            </button>
+            <button 
               onClick={() => setIsFormOpen(true)}
               style={{ 
                 marginTop: '16px', padding: '10px 24px', borderRadius: 'var(--radius-full)', 
@@ -381,6 +416,7 @@ export const InvoiceDashboard: React.FC = () => {
           onAdd={handleAddInvoice}
           onClose={() => setIsFormOpen(false)}
           existingClients={uniqueClients}
+          companies={companies}
         />
       )}
 
@@ -392,6 +428,16 @@ export const InvoiceDashboard: React.FC = () => {
           onClose={() => setSelectedInvoice(null)}
           onImageClick={setViewerUrl}
           existingClients={uniqueClients}
+          companies={companies}
+        />
+      )}
+
+      {isCompanyModalOpen && (
+        <CompanyManagerModal
+          companies={companies}
+          onAdd={handleAddCompany}
+          onDelete={handleDeleteCompany}
+          onClose={() => setIsCompanyModalOpen(false)}
         />
       )}
 

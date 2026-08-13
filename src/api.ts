@@ -1,6 +1,14 @@
 import type { Invoice } from './components/InvoiceDashboard';
 import { supabase } from './supabaseClient';
 
+export interface Company {
+  id: string;
+  name: string;
+  taxId?: string;
+  phone?: string;
+  address?: string;
+}
+
 // Helper to upload a file to Supabase Storage
 const uploadFile = async (file: File, path: string): Promise<string> => {
   const fileExt = file.name.split('.').pop();
@@ -112,5 +120,46 @@ export const deleteInvoice = async (id: string): Promise<void> => {
   if (error) {
     console.error('Delete error:', error);
     throw new Error('Failed to delete invoice');
+  }
+};
+
+// --- Company API ---
+
+export const fetchCompanies = async (): Promise<Company[]> => {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Fetch companies error:', error);
+    throw new Error('Failed to fetch companies');
+  }
+
+  return data as Company[];
+};
+
+export const addCompany = async (company: Company): Promise<Company> => {
+  const { error } = await supabase
+    .from('companies')
+    .insert([company]);
+
+  if (error) {
+    console.error('Insert company error:', error);
+    throw new Error('Failed to add company');
+  }
+
+  return company;
+};
+
+export const deleteCompany = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('companies')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Delete company error:', error);
+    throw new Error('Failed to delete company');
   }
 };
