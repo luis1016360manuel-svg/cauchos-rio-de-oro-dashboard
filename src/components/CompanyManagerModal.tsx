@@ -86,7 +86,7 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({ compan
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Company Name *</label>
                   <input type="text" value={name} onChange={e => setName(e.target.value)} style={inputStyle} required />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                   <div>
                     <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Tax ID / RIF</label>
                     <input type="text" value={taxId} onChange={e => setTaxId(e.target.value)} style={inputStyle} />
