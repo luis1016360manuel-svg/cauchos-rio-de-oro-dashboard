@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { X, PlusCircle, AlertCircle, Camera, FileText } from 'lucide-react';
 import type { Invoice, InvoiceStatus, PaymentMethod } from './InvoiceDashboard';
 import type { Company } from '../api';
+import { t } from '../translations';
 
 interface AddInvoiceFormProps {
   onAdd: (newInvoice: Invoice, receiptFile: File | null, proofFile: File | null) => void;
@@ -39,7 +40,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
     return (
       <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
         {isPdf ? (
-          <FileText size={20} color="var(--gold-light)" />
+          <FileText size={14} color="var(--gold-light)" />
         ) : (
           <img src={dataUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
@@ -122,7 +123,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
 
         <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <PlusCircle size={20} color="var(--gold-light)" />
-          Add New Invoice
+          {t.addNewInvoice}
         </h3>
 
         {error && (
@@ -135,7 +136,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Invoice Code *</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.invoiceCode}</label>
             <input 
               type="text" 
               value={invoiceCode}
@@ -147,7 +148,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Client Name</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.clientName}</label>
             <input 
               type="text" 
               list="existing-clients"
@@ -165,7 +166,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Total Amount ($)</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.totalAmount}</label>
               <input 
                 type="number"
                 min="0"
@@ -177,7 +178,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Paid Amount ($)</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.paidAmount}</label>
               <input 
                 type="number"
                 min="0"
@@ -199,20 +200,20 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Status</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.statusLabel}</label>
               <select 
                 value={status}
                 onChange={e => setStatus(e.target.value as InvoiceStatus)}
                 style={inputStyle}
               >
-                <option value="UNPAID">Unpaid</option>
-                <option value="PARTIALLY_PAID">Partially Paid</option>
-                <option value="PAID">Paid</option>
+                <option value="UNPAID">{t.status.UNPAID}</option>
+                <option value="PARTIALLY_PAID">{t.status.PARTIALLY_PAID}</option>
+                <option value="PAID">{t.status.PAID}</option>
               </select>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Due Date</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.dueDate} *</label>
               <input 
                 type="date"
                 value={dueDate}
@@ -223,14 +224,14 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Receipt Image (Optional)</label>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.receiptImage} (Optional)</label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 style={{ ...inputStyle, width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}
               >
-                <Camera size={16} color="var(--gold-light)" /> {receiptFile ? 'Replace Receipt' : 'Upload Receipt'}
+                <Camera size={16} color="var(--gold-light)" /> {receiptFile ? receiptFile.name : t.clickToUpload}
               </button>
               <input 
                 type="file" 
@@ -245,11 +246,11 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>Payment Details</h4>
+            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{t.paymentDetails}</h4>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Payment Method</label>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.paymentMethod}</label>
                 <select 
                   value={paymentMethod}
                   onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
@@ -263,7 +264,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
 
               {(paymentMethod === 'Zelle' || paymentMethod === 'Wire') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Transaction Ref *</label>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.transactionReference} *</label>
                   <input 
                     type="text" 
                     value={transactionReference}
@@ -276,14 +277,14 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Payment Proof Image (Optional)</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.paymentProof} (Optional)</label>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <button
                   type="button"
                   onClick={() => paymentProofRef.current?.click()}
                   style={{ ...inputStyle, width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}
                 >
-                  <Camera size={16} color="var(--gold-light)" /> {paymentProofFile ? 'Replace Proof' : 'Upload Proof'}
+                  <Camera size={16} color="var(--gold-light)" /> {paymentProofFile ? paymentProofFile.name : t.clickToUpload}
                 </button>
                 <input 
                   type="file" 
@@ -304,13 +305,13 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
               onClick={onClose}
               style={{ padding: '10px 20px', borderRadius: 'var(--radius-full)', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)', cursor: 'pointer' }}
             >
-              Cancel
+              {t.cancel}
             </button>
             <button 
               type="submit"
               style={{ padding: '10px 24px', borderRadius: 'var(--radius-full)', background: 'var(--gold-gradient)', color: '#07090e', border: 'none', fontWeight: 600, cursor: 'pointer' }}
             >
-              Save Invoice
+              {t.saveInvoice}
             </button>
           </div>
 

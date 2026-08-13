@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, ExternalLink } from 'lucide-react';
+import { t } from '../translations';
 
 interface ImageModalProps {
   url: string;
@@ -41,9 +42,9 @@ export const ImageModal: React.FC<ImageModalProps> = ({ url, onClose }) => {
 
         <div style={{ width: '100%', height: 'calc(90vh - 80px)', background: '#000', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {isPdf ? (
-            <iframe src={url} style={{ width: '100%', height: '100%', border: 'none' }} title="PDF Document" />
+            <iframe src={url} style={{ width: '100%', height: '100%', border: 'none' }} title={t.pdfDocument} />
           ) : (
-            <img src={url} alt="Full Resolution Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            <img src={url} alt={t.fullResPreview} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
           )}
         </div>
 
@@ -58,7 +59,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ url, onClose }) => {
             transition: 'background 0.2s',
           }}
         >
-          Open Original in New Tab <ExternalLink size={18} />
+          {t.openOriginal} <ExternalLink size={18} />
         </a>
       </div>
     </div>

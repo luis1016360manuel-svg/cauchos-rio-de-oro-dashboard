@@ -6,6 +6,7 @@ import { AddInvoiceForm } from './AddInvoiceForm';
 import { EditInvoiceModal } from './EditInvoiceModal';
 import { ImageModal } from './ImageModal';
 import { CompanyManagerModal } from './CompanyManagerModal';
+import { t } from '../translations';
 
 // --- TypeScript Interfaces ---
 
@@ -166,90 +167,47 @@ export const InvoiceDashboard: React.FC = () => {
 
   const renderInvoiceCard = (invoice: Invoice) => {
     const config = getStatusConfig(invoice.status);
-    const progress = (invoice.paidAmount / invoice.totalAmount) * 100;
+    const statusColor = config.color;
 
     return (
-      <div key={invoice.id} className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div key={invoice.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)' }}>{invoice.clientName}</h4>
-              <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', color: 'var(--text-dim)', borderRadius: '4px', fontFamily: 'var(--font-mono)' }}>
-                {invoice.invoiceCode}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>{invoice.invoiceCode}</span>
+              <div className="badge">
+                <span className="badge-dot" style={{ 
+                  backgroundColor: statusColor, 
+                  boxShadow: `0 0 8px ${statusColor}`,
+                  animation: invoice.status === 'UNPAID' ? 'none' : undefined 
+                }} />
+                <span style={{ color: statusColor }}>{t.status[invoice.status]}</span>
+              </div>
             </div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{invoice.id}</span>
-          </div>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '6px 12px', borderRadius: 'var(--radius-full)',
-            background: config.bg, color: config.color, fontSize: '0.8rem', fontWeight: 600
-          }}>
-            {config.icon}
-            {config.label}
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{invoice.clientName}</h3>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', margin: '8px 0' }}>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Total Amount</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{t.totalAmount}</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{formatCurrency(invoice.totalAmount)}</div>
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Pending Balance</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: config.color }}>{formatCurrency(invoice.pendingBalance)}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{t.paidAmount}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>{formatCurrency(invoice.paidAmount)}</div>
           </div>
         </div>
 
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-            <span>Paid: {formatCurrency(invoice.paidAmount)}</span>
-            <span>{Math.round(progress)}%</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '16px', borderTop: '1px dashed var(--border-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
+            <Clock size={14} /> {t.dueDate}: <span style={{ color: 'var(--text-main)' }}>{invoice.dueDate}</span>
           </div>
-          <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: `${progress}%`, height: '100%', background: config.color, borderRadius: '3px', transition: 'width 0.5s ease' }} />
-          </div>
-        </div>
-
-        {/* Thumbnails */}
-        {(invoice.receiptImage || invoice.paymentProofImage) && (
-          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-            {invoice.receiptImage && (
-              <div 
-                title="View Receipt"
-                onClick={(e) => { e.stopPropagation(); setViewerUrl(invoice.receiptImage!); }}
-                style={{ width: '36px', height: '36px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}
-              >
-                {invoice.receiptImage.toLowerCase().endsWith('.pdf') ? (
-                  <FileText size={16} color="var(--gold-light)" />
-                ) : (
-                  <img src={invoice.receiptImage} alt="Receipt" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                )}
-              </div>
-            )}
-            {invoice.paymentProofImage && (
-              <div 
-                title="View Payment Proof"
-                onClick={(e) => { e.stopPropagation(); setViewerUrl(invoice.paymentProofImage!); }}
-                style={{ width: '36px', height: '36px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}
-              >
-                {invoice.paymentProofImage.toLowerCase().endsWith('.pdf') ? (
-                  <FileText size={16} color="var(--gold-light)" />
-                ) : (
-                  <img src={invoice.paymentProofImage} alt="Proof" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Due: {new Date(invoice.dueDate).toLocaleDateString()}</span>
           <button 
             onClick={() => setSelectedInvoice(invoice)}
             style={{ background: 'none', border: 'none', color: 'var(--gold-light)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}
           >
-            View Details &rarr;
+            {t.viewDetails} &rarr;
           </button>
         </div>
       </div>
@@ -266,7 +224,7 @@ export const InvoiceDashboard: React.FC = () => {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: 'var(--gold-light)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-          <span style={{ color: 'var(--text-muted)' }}>Loading invoices securely...</span>
+          <span style={{ color: 'var(--text-muted)' }}>{t.loading}</span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
@@ -282,13 +240,13 @@ export const InvoiceDashboard: React.FC = () => {
           <div>
             <div className="badge" style={{ marginBottom: '16px' }}>
               <FileText size={14} color="var(--gold-light)" />
-              <span>Financial Operations</span>
+              <span>{t.financialOperations}</span>
             </div>
             <h2 style={{ fontSize: '2.4rem', fontWeight: 800, marginBottom: '8px' }}>
-              Invoice <span className="gradient-text">Management</span>
+              {t.invoiceManagement.split(' ')[0]} <span className="gradient-text">{t.invoiceManagement.split(' ').slice(1).join(' ')}</span>
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem' }}>
-              Track, categorize, and manage your client billing lifecycle.
+              {t.dashboardSubtitle}
             </p>
             <button 
               onClick={() => setIsCompanyModalOpen(true)}
@@ -299,18 +257,18 @@ export const InvoiceDashboard: React.FC = () => {
               }}
             >
               <Building2 size={18} />
-              Manage Companies
+              {t.manageCompanies}
             </button>
             <button 
               onClick={() => setIsFormOpen(true)}
               style={{ 
-                marginTop: '16px', padding: '10px 24px', borderRadius: 'var(--radius-full)', 
+                marginTop: '16px', marginLeft: '10px', padding: '10px 24px', borderRadius: 'var(--radius-full)', 
                 background: 'var(--gold-gradient)', color: '#07090e', border: 'none', 
                 fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
               }}
             >
               <PlusCircle size={18} />
-              Add Invoice
+              {t.addInvoice}
             </button>
           </div>
 
@@ -320,7 +278,7 @@ export const InvoiceDashboard: React.FC = () => {
               <Search size={18} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
                 type="text" 
-                placeholder="Search client or ID..." 
+                placeholder={t.searchPlaceholder} 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{
@@ -348,12 +306,12 @@ export const InvoiceDashboard: React.FC = () => {
                     color: activeFilter === filter ? '#07090e' : 'var(--text-muted)',
                     border: 'none',
                     fontSize: '0.85rem',
-                    fontWeight: 600,
+                    fontWeight: activeFilter === filter ? 600 : 400,
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
                 >
-                  {filter.replace('_', ' ')}
+                  {t.status[filter]}
                 </button>
               ))}
             </div>
@@ -367,7 +325,7 @@ export const InvoiceDashboard: React.FC = () => {
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}/>
-                Unpaid Invoices <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({unpaidInvoices.length})</span>
+                {t.unpaidInvoices} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({unpaidInvoices.length})</span>
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
                 {unpaidInvoices.map(renderInvoiceCard)}
@@ -379,7 +337,7 @@ export const InvoiceDashboard: React.FC = () => {
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}/>
-                Partially Paid Invoices <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({partiallyPaidInvoices.length})</span>
+                {t.partiallyPaidInvoices} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({partiallyPaidInvoices.length})</span>
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
                 {partiallyPaidInvoices.map(renderInvoiceCard)}
@@ -391,7 +349,7 @@ export const InvoiceDashboard: React.FC = () => {
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}/>
-                Paid Invoices <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({paidInvoices.length})</span>
+                {t.paidInvoices} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({paidInvoices.length})</span>
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
                 {paidInvoices.map(renderInvoiceCard)}
@@ -402,8 +360,8 @@ export const InvoiceDashboard: React.FC = () => {
           {filteredInvoices.length === 0 && (
             <div className="glass-panel" style={{ padding: '64px 24px', textAlign: 'center', borderRadius: 'var(--radius-lg)' }}>
               <Filter size={48} color="var(--text-dim)" style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
-              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '8px' }}>No invoices found</h4>
-              <p style={{ color: 'var(--text-muted)' }}>Try adjusting your search query or filters.</p>
+              <h4 style={{ fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '8px' }}>{t.noInvoices}</h4>
+              <p style={{ color: 'var(--text-muted)' }}>{t.dashboardSubtitle}</p>
             </div>
           )}
 
