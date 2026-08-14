@@ -72,4 +72,13 @@ export const t = {
   openOriginal: 'Abrir Original (Nueva Pestaña)',
   pdfDocument: 'Documento PDF',
   fullResPreview: 'Vista previa en resolución completa',
+
+  // Authentication
+  login: 'Iniciar Sesión',
+  username: 'Usuario',
+  password: 'Contraseña',
+  loginError: 'Usuario o contraseña incorrectos',
+  logout: 'Cerrar Sesión',
+  welcome: 'Bienvenido',
+  authSubtitle: 'Ingresa tus credenciales para acceder al sistema',
 };
