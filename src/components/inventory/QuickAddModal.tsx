@@ -30,24 +30,24 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
 
   // Calculate unique sizes
   const uniqueSizes = useMemo(() => {
-    const sizes = existingItems.map(i => i.size);
-    return Array.from(new Set(sizes));
+    const sizes = existingItems.map(i => i.size.trim().toUpperCase());
+    return Array.from(new Set(sizes)).filter(Boolean).sort();
   }, [existingItems]);
 
   const filteredSizes = useMemo(() => {
     return uniqueSizes.filter(s => s.toLowerCase().includes(size.toLowerCase()));
   }, [size, uniqueSizes]);
 
-  // Calculate unique brands for the chosen size
-  const uniqueBrandsForSize = useMemo(() => {
-    const matched = existingItems.filter(i => i.size.toLowerCase() === size.toLowerCase());
-    const brands = matched.map(i => i.brand);
-    return Array.from(new Set(brands));
-  }, [existingItems, size]);
+  // Calculate all unique brands globally
+  const allUniqueBrands = useMemo(() => {
+    const brands = existingItems.map(i => i.brand.trim().toUpperCase());
+    return Array.from(new Set(brands)).filter(Boolean).sort();
+  }, [existingItems]);
 
   const filteredBrands = useMemo(() => {
-    return uniqueBrandsForSize.filter(b => b.toLowerCase().includes(brand.toLowerCase()));
-  }, [brand, uniqueBrandsForSize]);
+    if (!brand) return allUniqueBrands;
+    return allUniqueBrands.filter(b => b.toLowerCase().includes(brand.toLowerCase()));
+  }, [brand, allUniqueBrands]);
 
   // Calculate Cost Reactively
   const unitCost = useMemo(() => {
@@ -206,6 +206,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
                   value={size}
                   onChange={e => { setSize(e.target.value); setShowSizeSuggestions(true); }}
                   onFocus={() => setShowSizeSuggestions(true)}
+                  onClick={() => setShowSizeSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSizeSuggestions(false), 200)}
                   onKeyDown={e => handleKeyDown(e, brandInputRef)}
                   placeholder="Ej. 205/55R16"
@@ -217,7 +218,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
 
               {showSizeSuggestions && filteredSizes.length > 0 && (
                 <div style={suggestionsDropdownStyle}>
-                  {filteredSizes.slice(0, 5).map(s => (
+                  {filteredSizes.map(s => (
                     <div 
                       key={s} 
                       onClick={() => handleSelectSize(s)}
@@ -243,6 +244,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
                   value={brand}
                   onChange={e => { setBrand(e.target.value); setShowBrandSuggestions(true); }}
                   onFocus={() => setShowBrandSuggestions(true)}
+                  onClick={() => setShowBrandSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowBrandSuggestions(false), 200)}
                   onKeyDown={e => handleKeyDown(e, priceInputRef)}
                   placeholder="Ej. KUMHO AT52"
@@ -252,7 +254,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
                 <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
               </div>
 
-              {showBrandSuggestions && filteredBrands.length > 0 && (
+              {showBrandSuggestions && (
                 <div style={suggestionsDropdownStyle}>
                   {filteredBrands.map(b => (
                     <div 
@@ -265,6 +267,16 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
                       {b}
                     </div>
                   ))}
+                  {brand && !allUniqueBrands.some(b => b.toLowerCase() === brand.toLowerCase()) && (
+                    <div 
+                      onClick={() => { setShowBrandSuggestions(false); setTimeout(() => priceInputRef.current?.focus(), 50); }}
+                      style={{ padding: '12px 16px', cursor: 'pointer', color: '#10b981', fontWeight: 600, transition: 'background 0.2s' }}
+                      onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                      onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      + Crear / Usar "{brand}"
+                    </div>
+                  )}
                 </div>
               )}
             </div>
