@@ -111,15 +111,37 @@ export const updateInvoice = async (
   return updatedInvoice;
 };
 
-export const deleteInvoice = async (id: string): Promise<void> => {
-  const { error } = await supabase
-    .from('invoices')
-    .delete()
-    .eq('id', id);
+export const deleteInvoice = async (invoiceOrId: string | Invoice): Promise<void> => {
+  try {
+    const id = typeof invoiceOrId === 'string' ? invoiceOrId : invoiceOrId.id;
 
-  if (error) {
-    console.error('Delete error:', error);
-    throw new Error('Failed to delete invoice');
+    // Remove files from storage if deleting full invoice object
+    if (typeof invoiceOrId !== 'string') {
+      const urlsToRemove = [];
+      if (invoiceOrId.receiptImage) urlsToRemove.push(invoiceOrId.receiptImage);
+      if (invoiceOrId.paymentProofImage) urlsToRemove.push(invoiceOrId.paymentProofImage);
+
+      for (const url of urlsToRemove) {
+        // Simple extraction of file path from public URL
+        const match = url.match(/\/invoice-files\/(.+)$/);
+        if (match && match[1]) {
+          await supabase.storage.from('invoice-files').remove([match[1]]);
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Delete error from Supabase:', error);
+      throw new Error('Failed to delete invoice');
+    }
+  } catch (err) {
+    console.error('Delete error caught in API:', err);
+    throw err; // Rethrow to be caught by the component
   }
 };
 

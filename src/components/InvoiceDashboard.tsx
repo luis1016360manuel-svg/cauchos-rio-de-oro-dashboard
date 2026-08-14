@@ -100,12 +100,14 @@ export const InvoiceDashboard: React.FC = () => {
   const handleDeleteInvoice = async (id: string) => {
     try {
       setIsLoading(true);
-      await deleteInvoice(id);
+      const invToDelete = invoices.find(inv => inv.id === id);
+      await deleteInvoice(invToDelete || id);
+      
       setInvoices(prev => prev.filter(inv => inv.id !== id));
       setSelectedInvoice(null);
     } catch (e) {
       console.error('Failed to delete', e);
-      alert('Failed to delete in cloud.');
+      alert('Failed to delete in cloud. Please try again.');
     } finally {
       setIsLoading(false);
     }
