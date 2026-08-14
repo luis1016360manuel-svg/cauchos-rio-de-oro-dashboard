@@ -3,6 +3,7 @@ export interface InventoryItem {
   brand: string;
   model: string;
   size: string;
+  rim: number;
   unitCost: number;
   sellingPrice: number;
   quantity: number;

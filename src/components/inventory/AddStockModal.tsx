@@ -12,6 +12,7 @@ export const AddStockModal: React.FC<AddStockModalProps> = ({ onClose, onSave, i
   const [brand, setBrand] = useState(initialData?.brand || '');
   const [model, setModel] = useState(initialData?.model || '');
   const [size, setSize] = useState(initialData?.size || '');
+  const [rim, setRim] = useState(initialData?.rim?.toString() || '');
   const [unitCost, setUnitCost] = useState(initialData?.unitCost.toString() || '');
   const [sellingPrice, setSellingPrice] = useState(initialData?.sellingPrice.toString() || '');
   const [quantity, setQuantity] = useState(initialData?.quantity.toString() || '1');
@@ -22,6 +23,7 @@ export const AddStockModal: React.FC<AddStockModalProps> = ({ onClose, onSave, i
       brand: brand.trim(),
       model: model.trim(),
       size: size.trim(),
+      rim: parseInt(rim) || 0,
       unitCost: parseFloat(unitCost) || 0,
       sellingPrice: parseFloat(sellingPrice) || 0,
       quantity: parseInt(quantity) || 0
@@ -91,15 +93,27 @@ export const AddStockModal: React.FC<AddStockModalProps> = ({ onClose, onSave, i
             />
           </div>
 
-          <div>
-            <label style={labelStyle}>Medida (Ej. 205/55R16)</label>
-            <input 
-              type="text" 
-              required 
-              value={size}
-              onChange={e => setSize(e.target.value)}
-              style={inputStyle}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+            <div>
+              <label style={labelStyle}>Medida (Ej. 205/55R16)</label>
+              <input 
+                type="text" 
+                required 
+                value={size}
+                onChange={e => setSize(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Rin (Opcional)</label>
+              <input 
+                type="number" 
+                min="0"
+                value={rim}
+                onChange={e => setRim(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

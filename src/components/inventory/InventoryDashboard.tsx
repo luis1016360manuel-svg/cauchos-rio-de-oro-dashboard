@@ -22,7 +22,8 @@ export const InventoryDashboard: React.FC = () => {
     return items.filter(item => 
       item.brand.toLowerCase().includes(query) || 
       item.model.toLowerCase().includes(query) || 
-      item.size.toLowerCase().includes(query)
+      item.size.toLowerCase().includes(query) ||
+      (item.rim && item.rim.toString().includes(query))
     );
   }, [items, searchQuery]);
 
@@ -185,6 +186,7 @@ export const InventoryDashboard: React.FC = () => {
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Medida</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Rin</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Costo</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Precio</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Stock</th>
@@ -194,7 +196,7 @@ export const InventoryDashboard: React.FC = () => {
             <tbody>
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={7} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <Search size={48} color="var(--text-dim)" style={{ margin: '0 auto 16px auto', opacity: 0.3 }} />
                     <p>{searchQuery ? 'No se encontraron cauchos con ese criterio de búsqueda.' : 'No hay artículos en el inventario'}</p>
                   </td>
@@ -207,6 +209,7 @@ export const InventoryDashboard: React.FC = () => {
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{item.model}</div>
                     </td>
                     <td style={{ padding: '16px', color: 'var(--text-main)' }}>{item.size}</td>
+                    <td style={{ padding: '16px', color: 'var(--text-main)' }}>{item.rim ? `R${item.rim}` : '-'}</td>
                     <td style={{ padding: '16px', color: 'var(--text-main)' }}>{formatCurrency(item.unitCost)}</td>
                     <td style={{ padding: '16px', color: 'var(--gold-light)', fontWeight: 600 }}>{formatCurrency(item.sellingPrice)}</td>
                     <td style={{ padding: '16px' }}>
