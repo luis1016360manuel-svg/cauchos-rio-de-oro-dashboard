@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { InvoiceDashboard } from './components/InvoiceDashboard';
+import { InventoryDashboard } from './components/inventory/InventoryDashboard';
 import { LoginScreen } from './components/LoginScreen';
 import { getSessionUser, logoutUser } from './auth';
 import type { AuthUser } from './auth';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, FileText, Package } from 'lucide-react';
 import { t } from './translations';
+
+type ViewMode = 'INVOICES' | 'INVENTORY';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [currentView, setCurrentView] = useState<ViewMode>('INVOICES');
 
   useEffect(() => {
     // Check if user is already logged in via sessionStorage on app load
@@ -56,7 +60,35 @@ function App() {
           <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>Rio de Oro</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          
+          <nav style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: 'var(--radius-full)' }}>
+            <button
+              onClick={() => setCurrentView('INVOICES')}
+              style={{
+                padding: '8px 16px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.9rem',
+                background: currentView === 'INVOICES' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: currentView === 'INVOICES' ? 'var(--gold-light)' : 'var(--text-muted)',
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+              }}
+            >
+              <FileText size={16} />
+              Facturación
+            </button>
+            <button
+              onClick={() => setCurrentView('INVENTORY')}
+              style={{
+                padding: '8px 16px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.9rem',
+                background: currentView === 'INVENTORY' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: currentView === 'INVENTORY' ? 'var(--gold-light)' : 'var(--text-muted)',
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+              }}
+            >
+              <Package size={16} />
+              Inventario
+            </button>
+          </nav>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '0.9rem' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)' }}>
               <User size={16} color="var(--gold-light)" />
@@ -83,7 +115,7 @@ function App() {
       </header>
 
       <main style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column' }}>
-        <InvoiceDashboard />
+        {currentView === 'INVOICES' ? <InvoiceDashboard /> : <InventoryDashboard />}
       </main>
     </div>
   );
