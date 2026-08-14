@@ -111,7 +111,7 @@ export const updateInvoice = async (
   return updatedInvoice;
 };
 
-export const deleteInvoice = async (invoiceOrId: string | Invoice): Promise<void> => {
+export const permanentlyDeleteInvoice = async (invoiceOrId: string | Invoice): Promise<void> => {
   try {
     const id = typeof invoiceOrId === 'string' ? invoiceOrId : invoiceOrId.id;
 
@@ -136,12 +136,42 @@ export const deleteInvoice = async (invoiceOrId: string | Invoice): Promise<void
       .eq('id', id);
 
     if (error) {
-      console.error('Delete error from Supabase:', error);
-      throw new Error('Failed to delete invoice');
+      console.error('Permanent delete error from Supabase:', error);
+      throw new Error('Failed to permanently delete invoice');
     }
   } catch (err) {
     console.error('Delete error caught in API:', err);
     throw err; // Rethrow to be caught by the component
+  }
+};
+
+export const softDeleteInvoice = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('invoices')
+    .update({ 
+      isDeleted: true, 
+      deletedAt: new Date().toISOString() 
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Soft delete error:', error);
+    throw new Error('Failed to soft delete invoice');
+  }
+};
+
+export const restoreInvoice = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('invoices')
+    .update({ 
+      isDeleted: false, 
+      deletedAt: null 
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Restore error:', error);
+    throw new Error('Failed to restore invoice');
   }
 };
 

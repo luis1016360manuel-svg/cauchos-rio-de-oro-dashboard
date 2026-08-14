@@ -27,6 +27,12 @@ export const t = {
   days: 'días',
   viewDetails: 'Ver Detalles',
   emptyCategory: 'No hay facturas registradas en esta categoría',
+  recycleBin: 'Papelera',
+  restore: 'Restaurar',
+  permanentDelete: 'Eliminar Definitivamente',
+  expiresIn: 'Expira en',
+  deletedOn: 'Eliminada el',
+  noDeletedInvoices: 'La papelera está vacía',
   
   // Invoice Card & Form
   totalAmount: 'Monto Total',

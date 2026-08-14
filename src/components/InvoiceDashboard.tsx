@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2 } from 'lucide-react';
-import { fetchInvoices, addInvoice, updateInvoice, deleteInvoice, fetchCompanies, addCompany, deleteCompany } from '../api';
+import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2, Trash2 } from 'lucide-react';
+import { fetchInvoices, addInvoice, updateInvoice, softDeleteInvoice, restoreInvoice, permanentlyDeleteInvoice, fetchCompanies, addCompany, deleteCompany } from '../api';
 import type { Company } from '../api';
 import { AddInvoiceForm } from './AddInvoiceForm';
 import { EditInvoiceModal } from './EditInvoiceModal';
 import { ImageModal } from './ImageModal';
 import { CompanyManagerModal } from './CompanyManagerModal';
+import { RecycleBinModal } from './RecycleBinModal';
 import { t } from '../translations';
 
 // --- TypeScript Interfaces ---
@@ -26,6 +27,8 @@ export interface Invoice {
   paymentMethod: PaymentMethod;
   transactionReference: string;
   paymentProofImage?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
 }
 
 // --- Component ---
@@ -38,6 +41,7 @@ export const InvoiceDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isRecycleBinOpen, setIsRecycleBinOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
@@ -100,14 +104,37 @@ export const InvoiceDashboard: React.FC = () => {
   const handleDeleteInvoice = async (id: string) => {
     try {
       setIsLoading(true);
-      const invToDelete = invoices.find(inv => inv.id === id);
-      await deleteInvoice(invToDelete || id);
-      
-      setInvoices(prev => prev.filter(inv => inv.id !== id));
+      await softDeleteInvoice(id);
+      setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, isDeleted: true, deletedAt: new Date().toISOString() } : inv));
       setSelectedInvoice(null);
     } catch (e) {
-      console.error('Failed to delete', e);
-      alert('Failed to delete in cloud. Please try again.');
+      console.error('Failed to soft delete', e);
+      alert('Failed to soft delete in cloud. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRestoreInvoice = async (id: string) => {
+    try {
+      setIsLoading(true);
+      await restoreInvoice(id);
+      setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, isDeleted: false, deletedAt: undefined } : inv));
+    } catch (err) {
+      alert('Failed to restore invoice');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const invToDelete = invoices.find(inv => inv.id === id);
+      await permanentlyDeleteInvoice(invToDelete || id);
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+    } catch (err) {
+      alert('Failed to permanently delete');
     } finally {
       setIsLoading(false);
     }
@@ -128,12 +155,17 @@ export const InvoiceDashboard: React.FC = () => {
   // Filtering Logic
   const filteredInvoices = useMemo(() => {
     return invoices.filter(invoice => {
+      if (invoice.isDeleted) return false;
       const matchesStatus = activeFilter === 'ALL' || invoice.status === activeFilter;
       const matchesSearch = invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             invoice.id.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
     });
-  }, [activeFilter, searchQuery]);
+  }, [invoices, activeFilter, searchQuery]);
+
+  const deletedInvoices = useMemo(() => {
+    return invoices.filter(invoice => invoice.isDeleted);
+  }, [invoices]);
 
   // Categorize for rendering if 'ALL' is selected
   const sortByDate = (a: Invoice, b: Invoice) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
@@ -273,6 +305,17 @@ export const InvoiceDashboard: React.FC = () => {
             >
               <Building2 size={18} />
               {t.manageCompanies}
+            </button>
+            <button 
+              onClick={() => setIsRecycleBinOpen(true)}
+              style={{ 
+                marginTop: '16px', marginLeft: '10px', padding: '10px 24px', borderRadius: 'var(--radius-full)', 
+                background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', 
+                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+              }}
+            >
+              <Trash2 size={18} />
+              {t.recycleBin}
             </button>
             <button 
               onClick={() => setIsFormOpen(true)}
@@ -423,6 +466,15 @@ export const InvoiceDashboard: React.FC = () => {
           onImageClick={setViewerUrl}
           existingClients={uniqueClients}
           companies={companies}
+        />
+      )}
+
+      {isRecycleBinOpen && (
+        <RecycleBinModal 
+          deletedInvoices={deletedInvoices}
+          onRestore={handleRestoreInvoice}
+          onPermanentDelete={handlePermanentDelete}
+          onClose={() => setIsRecycleBinOpen(false)}
         />
       )}
 
