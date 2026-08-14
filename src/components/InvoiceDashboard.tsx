@@ -28,18 +28,6 @@ export interface Invoice {
   paymentProofImage?: string;
 }
 
-// --- Mock Data ---
-
-const mockInvoices: Invoice[] = [
-  { id: 'INV-1001', invoiceCode: 'SI-2026-001', clientName: 'Stark Industries', totalAmount: 15000.00, paidAmount: 15000.00, pendingBalance: 0, status: 'PAID', dueDate: '2026-08-01', paymentMethod: 'Wire', transactionReference: 'WR-938472' },
-  { id: 'INV-1002', invoiceCode: 'WE-2026-085', clientName: 'Wayne Enterprises', totalAmount: 24500.50, paidAmount: 24500.50, pendingBalance: 0, status: 'PAID', dueDate: '2026-08-05', paymentMethod: 'Zelle', transactionReference: 'ZEL-482910' },
-  { id: 'INV-1003', invoiceCode: 'AC-2026-012', clientName: 'Acme Corp', totalAmount: 8500.00, paidAmount: 0, pendingBalance: 8500.00, status: 'UNPAID', dueDate: '2026-08-15', paymentMethod: 'Cash', transactionReference: '' },
-  { id: 'INV-1004', invoiceCode: 'GC-2026-999', clientName: 'Globex Corp', totalAmount: 12400.75, paidAmount: 0, pendingBalance: 12400.75, status: 'UNPAID', dueDate: '2026-08-20', paymentMethod: 'Wire', transactionReference: '' },
-  { id: 'INV-1005', invoiceCode: 'UC-2026-044', clientName: 'Umbrella Corp', totalAmount: 50000.00, paidAmount: 20000.00, pendingBalance: 30000.00, status: 'PARTIALLY_PAID', dueDate: '2026-08-25', paymentMethod: 'Wire', transactionReference: 'WR-88371' },
-  { id: 'INV-1006', invoiceCode: 'MD-2026-302', clientName: 'Massive Dynamic', totalAmount: 7500.00, paidAmount: 2500.00, pendingBalance: 5000.00, status: 'PARTIALLY_PAID', dueDate: '2026-08-30', paymentMethod: 'Zelle', transactionReference: 'ZEL-55921' },
-  { id: 'INV-1007', invoiceCode: 'IG-2026-001', clientName: 'InGen', totalAmount: 105000.00, paidAmount: 50000.00, pendingBalance: 55000.00, status: 'PARTIALLY_PAID', dueDate: '2026-09-05', paymentMethod: 'Wire', transactionReference: 'WR-11933' },
-];
-
 // --- Component ---
 
 export const InvoiceDashboard: React.FC = () => {
@@ -65,7 +53,7 @@ export const InvoiceDashboard: React.FC = () => {
         if (invData && invData.length > 0) {
           setInvoices(invData);
         } else {
-          setInvoices(mockInvoices);
+          setInvoices([]);
         }
 
         if (compData) {
@@ -73,7 +61,7 @@ export const InvoiceDashboard: React.FC = () => {
         }
       } catch (e) {
         console.error('Failed to load data', e);
-        setInvoices(mockInvoices);
+        setInvoices([]);
       } finally {
         setIsLoading(false);
       }
@@ -146,8 +134,10 @@ export const InvoiceDashboard: React.FC = () => {
   }, [activeFilter, searchQuery]);
 
   // Categorize for rendering if 'ALL' is selected
-  const unpaidInvoices = filteredInvoices.filter(inv => inv.status === 'UNPAID');
-  const partiallyPaidInvoices = filteredInvoices.filter(inv => inv.status === 'PARTIALLY_PAID');
+  const sortByDate = (a: Invoice, b: Invoice) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+
+  const unpaidInvoices = filteredInvoices.filter(inv => inv.status === 'UNPAID').sort(sortByDate);
+  const partiallyPaidInvoices = filteredInvoices.filter(inv => inv.status === 'PARTIALLY_PAID').sort(sortByDate);
   const paidInvoices = filteredInvoices.filter(inv => inv.status === 'PAID');
 
   const getStatusConfig = (status: InvoiceStatus) => {
@@ -169,11 +159,33 @@ export const InvoiceDashboard: React.FC = () => {
     const config = getStatusConfig(invoice.status);
     const statusColor = config.color;
 
+    // Calculate urgency for non-paid invoices
+    const isPending = invoice.status !== 'PAID';
+    const dueDate = new Date(invoice.dueDate);
+    const today = new Date();
+    // Reset time for accurate day comparison
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    let urgencyBadge = null;
+    if (isPending) {
+      if (diffDays < 0) {
+        urgencyBadge = <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>{t.overdue} ({Math.abs(diffDays)} {t.days})</span>;
+      } else if (diffDays === 0) {
+        urgencyBadge = <span style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>{t.dueToday}</span>;
+      } else if (diffDays <= 7) {
+        urgencyBadge = <span style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>{t.dueInDays} {diffDays} {t.days}</span>;
+      }
+    }
+
     return (
-      <div key={invoice.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px' }}>
+      <div key={invoice.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '24px', border: (isPending && diffDays < 0) ? '1px solid rgba(239, 68, 68, 0.3)' : undefined }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>{invoice.invoiceCode}</span>
               <div className="badge">
                 <span className="badge-dot" style={{ 
@@ -183,6 +195,7 @@ export const InvoiceDashboard: React.FC = () => {
                 }} />
                 <span style={{ color: statusColor }}>{t.status[invoice.status]}</span>
               </div>
+              {urgencyBadge}
             </div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{invoice.clientName}</h3>
           </div>
@@ -200,8 +213,8 @@ export const InvoiceDashboard: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '16px', borderTop: '1px dashed var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-            <Clock size={14} /> {t.dueDate}: <span style={{ color: 'var(--text-main)' }}>{invoice.dueDate}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: (isPending && diffDays < 0) ? '#ef4444' : 'var(--text-dim)', fontSize: '0.85rem' }}>
+            <Clock size={14} /> {t.dueDate}: <span style={{ color: (isPending && diffDays < 0) ? '#ef4444' : 'var(--text-main)', fontWeight: (isPending && diffDays < 0) ? 600 : 400 }}>{invoice.dueDate}</span>
           </div>
           <button 
             onClick={() => setSelectedInvoice(invoice)}
@@ -321,39 +334,60 @@ export const InvoiceDashboard: React.FC = () => {
         {/* Dashboard Content */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
           
-          {(activeFilter === 'ALL' || activeFilter === 'UNPAID') && unpaidInvoices.length > 0 && (
+          {(activeFilter === 'ALL' || activeFilter === 'UNPAID') && (
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}/>
                 {t.unpaidInvoices} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({unpaidInvoices.length})</span>
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
-                {unpaidInvoices.map(renderInvoiceCard)}
-              </div>
+              {unpaidInvoices.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+                  {unpaidInvoices.map(renderInvoiceCard)}
+                </div>
+              ) : (
+                <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <CheckCircle2 size={20} color="var(--gold-light)" opacity={0.5} />
+                  {t.emptyCategory}
+                </div>
+              )}
             </div>
           )}
 
-          {(activeFilter === 'ALL' || activeFilter === 'PARTIALLY_PAID') && partiallyPaidInvoices.length > 0 && (
+          {(activeFilter === 'ALL' || activeFilter === 'PARTIALLY_PAID') && (
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}/>
                 {t.partiallyPaidInvoices} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({partiallyPaidInvoices.length})</span>
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
-                {partiallyPaidInvoices.map(renderInvoiceCard)}
-              </div>
+              {partiallyPaidInvoices.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+                  {partiallyPaidInvoices.map(renderInvoiceCard)}
+                </div>
+              ) : (
+                <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <CheckCircle2 size={20} color="var(--gold-light)" opacity={0.5} />
+                  {t.emptyCategory}
+                </div>
+              )}
             </div>
           )}
 
-          {(activeFilter === 'ALL' || activeFilter === 'PAID') && paidInvoices.length > 0 && (
+          {(activeFilter === 'ALL' || activeFilter === 'PAID') && (
             <div>
               <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}/>
                 {t.paidInvoices} <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)', fontWeight: 400 }}>({paidInvoices.length})</span>
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
-                {paidInvoices.map(renderInvoiceCard)}
-              </div>
+              {paidInvoices.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+                  {paidInvoices.map(renderInvoiceCard)}
+                </div>
+              ) : (
+                <div style={{ padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <CheckCircle2 size={20} color="var(--gold-light)" opacity={0.5} />
+                  {t.emptyCategory}
+                </div>
+              )}
             </div>
           )}
 

@@ -21,7 +21,12 @@ export const t = {
   partiallyPaidInvoices: 'Pago Parcial',
   paidInvoices: 'Facturas Pagadas',
   noInvoices: 'No se encontraron facturas. ¡Añade una para empezar!',
+  overdue: 'Vencida',
+  dueToday: 'Vence hoy',
+  dueInDays: 'Vence en',
+  days: 'días',
   viewDetails: 'Ver Detalles',
+  emptyCategory: 'No hay facturas registradas en esta categoría',
   
   // Invoice Card & Form
   totalAmount: 'Monto Total',
