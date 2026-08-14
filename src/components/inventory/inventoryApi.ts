@@ -112,6 +112,42 @@ export const updateInventoryItem = async (item: InventoryItem): Promise<Inventor
   return data as InventoryItem;
 };
 
+export const updateStockWithLog = async (item: InventoryItem, newStock: number): Promise<InventoryItem> => {
+  // Update the inventory item
+  const { data: updatedItem, error: updateError } = await supabase
+    .from('inventory_items')
+    .update({ quantity: newStock })
+    .eq('id', item.id)
+    .select()
+    .single();
+
+  if (updateError) {
+    console.error('Error updating stock:', updateError);
+    throw new Error('Failed to update stock');
+  }
+
+  // Insert log
+  const logId = `LOG-${Date.now()}`;
+  const tipo = newStock > item.quantity ? 'entrada' : newStock < item.quantity ? 'salida' : 'ajuste_manual';
+  const { error: logError } = await supabase
+    .from('inventory_logs')
+    .insert([{
+      id: logId,
+      item_id: item.id,
+      tipo_movimiento: tipo,
+      cantidad_anterior: item.quantity,
+      cantidad_nueva: newStock,
+      createdAt: new Date().toISOString()
+    }]);
+
+  if (logError) {
+    console.error('Error logging stock update:', logError);
+    // We don't throw here to avoid failing the stock update if log fails, but it should be noted
+  }
+
+  return updatedItem as InventoryItem;
+};
+
 export const deleteInventoryItem = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('inventory_items')

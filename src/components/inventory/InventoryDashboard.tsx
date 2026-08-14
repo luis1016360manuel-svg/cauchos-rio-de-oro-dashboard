@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
-import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, dischargeInventory, quickAddOrUpdateInventoryItem } from './inventoryApi';
+import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, updateStockWithLog } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
 import { DischargeStockModal } from './DischargeStockModal';
 
@@ -14,6 +14,10 @@ export const InventoryDashboard: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [dischargingItem, setDischargingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Inline Stock Editing State
+  const [editingStockId, setEditingStockId] = useState<string | null>(null);
+  const [tempStockValue, setTempStockValue] = useState<string>('');
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return items;
@@ -65,14 +69,49 @@ export const InventoryDashboard: React.FC = () => {
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (!window.confirm('¿Eliminar este artículo del inventario?')) return;
-    try {
-      await deleteInventoryItem(id);
-      setItems(prev => prev.filter(i => i.id !== id));
-    } catch (e) {
-      alert('Error deleting item');
+    if (confirm('¿Estás seguro de que deseas eliminar este artículo de forma permanente?')) {
+      try {
+        await deleteInventoryItem(id);
+        setItems(prev => prev.filter(i => i.id !== id));
+      } catch (e) {
+        alert('Error al eliminar el artículo');
+      }
     }
   };
+
+  // --- Inline Stock Editing Handlers ---
+  const handleStockEditStart = (item: InventoryItem) => {
+    setEditingStockId(item.id);
+    setTempStockValue(item.quantity.toString());
+  };
+
+  const handleStockEditCancel = () => {
+    setEditingStockId(null);
+    setTempStockValue('');
+  };
+
+  const handleStockEditSubmit = async (item: InventoryItem) => {
+    const newStock = parseInt(tempStockValue);
+    if (isNaN(newStock) || newStock < 0) {
+      alert('La cantidad debe ser un número mayor o igual a 0');
+      handleStockEditCancel();
+      return;
+    }
+
+    if (newStock === item.quantity) {
+      handleStockEditCancel();
+      return; // No change
+    }
+
+    try {
+      const updated = await updateStockWithLog(item, newStock);
+      setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+      setEditingStockId(null);
+    } catch (e) {
+      alert('Error al actualizar el stock');
+    }
+  };
+  // -------------------------------------
 
   const handleDischarge = async (quantity: number, clientName?: string, invoiceReference?: string) => {
     if (!dischargingItem) return;
@@ -213,13 +252,51 @@ export const InventoryDashboard: React.FC = () => {
                     <td style={{ padding: '16px', color: 'var(--text-main)' }}>{formatCurrency(item.unitCost)}</td>
                     <td style={{ padding: '16px', color: 'var(--gold-light)', fontWeight: 600 }}>{formatCurrency(item.sellingPrice)}</td>
                     <td style={{ padding: '16px' }}>
-                      <span style={{ 
-                        padding: '4px 12px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 600,
-                        background: item.quantity > 4 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        color: item.quantity > 4 ? '#10b981' : '#ef4444'
-                      }}>
-                        {item.quantity} u.
-                      </span>
+                      {editingStockId === item.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input 
+                            type="number" 
+                            min="0"
+                            value={tempStockValue}
+                            onChange={(e) => setTempStockValue(e.target.value)}
+                            onBlur={() => handleStockEditSubmit(item)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleStockEditSubmit(item);
+                              if (e.key === 'Escape') handleStockEditCancel();
+                            }}
+                            autoFocus
+                            style={{ 
+                              width: '70px', padding: '6px', borderRadius: '6px', 
+                              border: '1px solid #10b981', background: 'rgba(16, 185, 129, 0.1)', 
+                              color: '#10b981', fontWeight: 700, outline: 'none' 
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div 
+                          onClick={() => handleStockEditStart(item)}
+                          title="Haz clic para editar"
+                          style={{ 
+                            display: 'inline-flex', alignItems: 'center', gap: '8px', 
+                            cursor: 'pointer', padding: '4px 8px', borderRadius: '6px',
+                            background: item.quantity === 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                            border: '1px solid transparent',
+                            transition: 'border-color 0.2s'
+                          }}
+                          onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                          onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
+                        >
+                          <span style={{ 
+                            fontWeight: 700, 
+                            color: item.quantity === 0 ? '#ef4444' : (item.quantity < 5 ? '#f59e0b' : 'var(--text-main)') 
+                          }}>
+                            {item.quantity} u.
+                          </span>
+                          {item.quantity === 0 && (
+                            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ef4444', color: '#fff', borderRadius: '4px', fontWeight: 600 }}>AGOTADO</span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>

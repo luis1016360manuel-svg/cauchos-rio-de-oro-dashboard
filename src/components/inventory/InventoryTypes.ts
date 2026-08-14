@@ -21,3 +21,12 @@ export interface DischargedItem {
   invoiceReference?: string;
   dischargedAt: string;
 }
+
+export interface InventoryLog {
+  id: string;
+  item_id: string;
+  tipo_movimiento: 'ajuste_manual' | 'entrada' | 'salida';
+  cantidad_anterior: number;
+  cantidad_nueva: number;
+  createdAt: string;
+}
