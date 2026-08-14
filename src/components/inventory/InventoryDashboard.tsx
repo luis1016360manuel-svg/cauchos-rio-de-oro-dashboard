@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, History, PlusCircle, ArrowDownRight, Edit2, Trash2, Search } from 'lucide-react';
+import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
-import { fetchInventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, fetchDischargedHistory, dischargeInventory } from './inventoryApi';
-import { AddStockModal } from './AddStockModal';
+import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, dischargeInventory, quickAddOrUpdateInventoryItem } from './inventoryApi';
+import { QuickAddModal } from './QuickAddModal';
 import { DischargeStockModal } from './DischargeStockModal';
 
 export const InventoryDashboard: React.FC = () => {
@@ -12,7 +12,6 @@ export const InventoryDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [dischargingItem, setDischargingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -48,19 +47,20 @@ export const InventoryDashboard: React.FC = () => {
     }
   };
 
-  const handleSaveStock = async (newItemData: Omit<InventoryItem, 'id' | 'createdAt'>) => {
+  const handleQuickAdd = async (itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'quantity'>, quantityToAdd: number) => {
     try {
-      if (editingItem) {
-        const updated = await updateInventoryItem({ ...editingItem, ...newItemData });
-        setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-      } else {
-        const added = await addInventoryItem(newItemData);
-        setItems(prev => [...prev, added]);
-      }
-      setIsAddModalOpen(false);
-      setEditingItem(null);
+      const savedItem = await quickAddOrUpdateInventoryItem(itemData, quantityToAdd);
+      setItems(prev => {
+        const exists = prev.find(i => i.id === savedItem.id);
+        if (exists) {
+          return prev.map(i => i.id === savedItem.id ? savedItem : i);
+        } else {
+          return [...prev, savedItem];
+        }
+      });
     } catch (e) {
-      alert('Error saving stock');
+      alert('Error guardando inventario');
+      throw e;
     }
   };
 
@@ -119,7 +119,7 @@ export const InventoryDashboard: React.FC = () => {
         </div>
 
         <button 
-          onClick={() => { setEditingItem(null); setIsAddModalOpen(true); }}
+          onClick={() => setIsAddModalOpen(true)}
           style={{ 
             padding: '10px 24px', borderRadius: 'var(--radius-full)', 
             background: 'var(--gold-gradient)', color: '#07090e', border: 'none', 
@@ -127,7 +127,7 @@ export const InventoryDashboard: React.FC = () => {
           }}
         >
           <PlusCircle size={18} />
-          Añadir Mercancía
+          Ingreso Rápido
         </button>
       </div>
 
@@ -232,13 +232,6 @@ export const InventoryDashboard: React.FC = () => {
                           <ArrowDownRight size={16} />
                         </button>
                         <button 
-                          onClick={() => { setEditingItem(item); setIsAddModalOpen(true); }}
-                          title="Editar"
-                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: 'none', cursor: 'pointer' }}
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button 
                           onClick={() => handleDeleteItem(item.id)}
                           title="Eliminar"
                           style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
@@ -296,10 +289,10 @@ export const InventoryDashboard: React.FC = () => {
       </div>
 
       {isAddModalOpen && (
-        <AddStockModal
-          onClose={() => { setIsAddModalOpen(false); setEditingItem(null); }}
-          onSave={handleSaveStock}
-          initialData={editingItem}
+        <QuickAddModal
+          onClose={() => setIsAddModalOpen(false)}
+          onSave={handleQuickAdd}
+          existingItems={items}
         />
       )}
 

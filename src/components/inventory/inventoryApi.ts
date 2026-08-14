@@ -37,6 +37,65 @@ export const addInventoryItem = async (item: Omit<InventoryItem, 'id' | 'created
   return data as InventoryItem;
 };
 
+export const quickAddOrUpdateInventoryItem = async (
+  itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'quantity'>,
+  quantityToAdd: number
+): Promise<InventoryItem> => {
+  // 1. Check if the exact brand, model, and size already exists
+  const { data: existingItems, error: searchError } = await supabase
+    .from('inventory_items')
+    .select('*')
+    .ilike('size', itemData.size)
+    .ilike('brand', itemData.brand)
+    .limit(1);
+
+  if (searchError) {
+    console.error('Error searching for existing item:', searchError);
+    throw new Error('Failed to verify existing inventory');
+  }
+
+  // 2. If it exists, update it
+  if (existingItems && existingItems.length > 0) {
+    const existing = existingItems[0] as InventoryItem;
+    const { data: updated, error: updateError } = await supabase
+      .from('inventory_items')
+      .update({ 
+        quantity: existing.quantity + quantityToAdd,
+        unitCost: itemData.unitCost, // Update costs in case they changed
+        sellingPrice: itemData.sellingPrice,
+        rim: itemData.rim // Just in case it was 0 before
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+    return updated as InventoryItem;
+  }
+
+  // 3. If it does not exist, insert it
+  const id = `ITEM-${Date.now()}`;
+  const newItem: InventoryItem = {
+    ...itemData,
+    quantity: quantityToAdd,
+    id,
+    createdAt: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .insert([newItem])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding new inventory item:', error);
+    throw new Error('Failed to add new inventory item');
+  }
+
+  return data as InventoryItem;
+};
+
 export const updateInventoryItem = async (item: InventoryItem): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
