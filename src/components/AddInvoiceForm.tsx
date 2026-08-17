@@ -149,19 +149,28 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.clientName}</label>
-            <input 
-              type="text" 
-              list="existing-clients"
-              value={clientName}
-              onChange={e => setClientName(e.target.value)}
-              style={inputStyle}
-              placeholder="e.g. Stark Industries"
-            />
-            <datalist id="existing-clients">
-              {Array.from(new Set([...companies.map(c => c.name), ...existingClients])).sort().map(client => (
-                <option key={client} value={client} />
-              ))}
-            </datalist>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                type="text" 
+                value={clientName}
+                onChange={e => setClientName(e.target.value)}
+                style={{ ...inputStyle, flex: 1 }}
+                placeholder="Escribe o selecciona..."
+              />
+              <select 
+                style={{ ...inputStyle, width: '44px', padding: '0 4px', cursor: 'pointer' }}
+                onChange={e => {
+                  if (e.target.value) setClientName(e.target.value);
+                  e.target.value = '';
+                }}
+                title="Seleccionar de la lista"
+              >
+                <option value="">▼</option>
+                {Array.from(new Set([...companies.map(c => c.name), ...existingClients])).sort().map(client => (
+                  <option key={client} value={client}>{client}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
