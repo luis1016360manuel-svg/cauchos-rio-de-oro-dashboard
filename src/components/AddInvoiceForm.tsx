@@ -19,7 +19,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
   const [status, setStatus] = useState<InvoiceStatus>('UNPAID');
   const [dueDate, setDueDate] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Zelle');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
   const [transactionReference, setTransactionReference] = useState('');
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +85,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
       setError('Due Date is required.');
       return;
     }
-    if ((paymentMethod === 'Zelle' || paymentMethod === 'Wire') && !transactionReference.trim()) {
+    if (paymentMethod && (paymentMethod === 'Zelle' || paymentMethod === 'Wire') && !transactionReference.trim()) {
       setError(`Transaction Reference is required for ${paymentMethod} payments.`);
       return;
     }
@@ -252,17 +252,18 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.paymentMethod}</label>
                 <select 
-                  value={paymentMethod}
-                  onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
+                  value={paymentMethod} 
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                   style={inputStyle}
                 >
+                  <option value="">Por Cobrar (Pendiente)</option>
                   <option value="Zelle">Zelle</option>
-                  <option value="Wire">Wire Transfer</option>
                   <option value="Cash">Cash</option>
+                  <option value="Wire">Wire Transfer</option>
                 </select>
               </div>
 
-              {(paymentMethod === 'Zelle' || paymentMethod === 'Wire') && (
+              {paymentMethod && (paymentMethod === 'Zelle' || paymentMethod === 'Wire') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.transactionReference} *</label>
                   <input 

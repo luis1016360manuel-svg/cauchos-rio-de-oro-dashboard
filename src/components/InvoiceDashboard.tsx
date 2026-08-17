@@ -12,7 +12,7 @@ import { t } from '../translations';
 // --- TypeScript Interfaces ---
 
 export type InvoiceStatus = 'UNPAID' | 'PAID' | 'PARTIALLY_PAID';
-export type PaymentMethod = 'Zelle' | 'Cash' | 'Wire';
+export type PaymentMethod = 'Zelle' | 'Cash' | 'Wire' | '';
 
 export interface Invoice {
   id: string;
@@ -236,9 +236,11 @@ export const InvoiceDashboard: React.FC = () => {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', margin: '8px 0' }}>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{t.totalAmount}</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>{formatCurrency(invoice.totalAmount)}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
+            {invoice.paymentMethod || <span style={{ color: '#ef4444', fontWeight: 600 }}>Por Cobrar</span>}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {invoice.transactionReference || 'N/A'}
           </div>
           <div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{t.paidAmount}</div>
