@@ -20,14 +20,42 @@ export const InventoryDashboard: React.FC = () => {
   const [tempStockValue, setTempStockValue] = useState<string>('');
 
   const filteredItems = useMemo(() => {
-    if (!searchQuery) return items;
-    const query = searchQuery.toLowerCase();
-    return items.filter(item => 
-      item.brand.toLowerCase().includes(query) || 
-      item.model.toLowerCase().includes(query) || 
-      item.size.toLowerCase().includes(query) ||
-      (item.rim && item.rim.toString().includes(query))
-    );
+    let result = items;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = items.filter(item => 
+        item.brand.toLowerCase().includes(query) || 
+        item.model.toLowerCase().includes(query) || 
+        item.size.toLowerCase().includes(query) ||
+        (item.rim && item.rim.toString().includes(query))
+      );
+    }
+
+    const parseTireSize = (measure: string) => {
+      const upper = measure.toUpperCase();
+      const parts = upper.split('R');
+      const beforeR = parts[0] || '';
+      const afterR = parts[1] || '';
+      
+      const subParts = beforeR.split('/');
+      const width = parseFloat(subParts[0]) || 0;
+      const profile = parseFloat(subParts[1]) || 80;
+      
+      const rimMatch = afterR.match(/\d+/);
+      const rim = rimMatch ? parseFloat(rimMatch[0]) : 0;
+      
+      return { width, profile, rim };
+    };
+
+    return [...result].sort((a, b) => {
+      const parsedA = parseTireSize(a.size);
+      const parsedB = parseTireSize(b.size);
+      
+      if (parsedA.width !== parsedB.width) return parsedA.width - parsedB.width;
+      if (parsedA.profile !== parsedB.profile) return parsedA.profile - parsedB.profile;
+      if (parsedA.rim !== parsedB.rim) return parsedA.rim - parsedB.rim;
+      return a.brand.localeCompare(b.brand);
+    });
   }, [items, searchQuery]);
 
   useEffect(() => {
