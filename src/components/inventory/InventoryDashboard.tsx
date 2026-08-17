@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search } from 'lucide-react';
+import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search, Printer } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
 import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, updateStockWithLog } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
 import { DischargeStockModal } from './DischargeStockModal';
+import { generateInventoryPDF } from './pdfGenerator';
 
 export const InventoryDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CURRENT' | 'HISTORY'>('CURRENT');
@@ -185,17 +186,34 @@ export const InventoryDashboard: React.FC = () => {
           <p style={{ color: 'var(--text-muted)' }}>Gestiona tu stock de llantas y mercancía</p>
         </div>
 
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          style={{ 
-            padding: '10px 24px', borderRadius: 'var(--radius-full)', 
-            background: 'var(--gold-gradient)', color: '#07090e', border: 'none', 
-            fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-          }}
-        >
-          <PlusCircle size={18} />
-          Ingreso Rápido
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button 
+            onClick={() => generateInventoryPDF(filteredItems)}
+            title="Imprimir / Exportar PDF"
+            style={{ 
+              padding: '10px 16px', borderRadius: 'var(--radius-full)', 
+              background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-main)', border: '1px solid var(--border-color)', 
+              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+            onMouseOut={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+          >
+            <Printer size={18} />
+            <span className="hide-on-mobile">Exportar</span>
+          </button>
+          
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            style={{ 
+              padding: '10px 24px', borderRadius: 'var(--radius-full)', 
+              background: 'var(--gold-gradient)', color: '#07090e', border: 'none', 
+              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+            }}
+          >
+            <PlusCircle size={18} />
+            Ingreso Rápido
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
