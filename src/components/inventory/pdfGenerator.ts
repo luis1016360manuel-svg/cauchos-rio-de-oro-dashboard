@@ -68,7 +68,7 @@ export const generateInventoryPDF = (items: InventoryItem[]) => {
     columnStyles: {
       0: { halign: 'center', cellWidth: 30 },
       1: { fontStyle: 'bold' },
-      3: { halign: 'right', cellWidth: 100 },
+      3: { halign: 'left', cellWidth: 100 },
       4: { halign: 'left', fontStyle: 'bold', cellWidth: 160 },
     },
     didDrawPage: (data) => {
