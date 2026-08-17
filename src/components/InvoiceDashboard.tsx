@@ -263,10 +263,6 @@ export const InvoiceDashboard: React.FC = () => {
     );
   };
 
-  const uniqueClients = useMemo(() => {
-    const clients = invoices.map(inv => inv.clientName);
-    return Array.from(new Set(clients)).sort();
-  }, [invoices]);
 
   if (isLoading) {
     return (
@@ -454,8 +450,8 @@ export const InvoiceDashboard: React.FC = () => {
         <AddInvoiceForm 
           onAdd={handleAddInvoice}
           onClose={() => setIsFormOpen(false)}
-          existingClients={uniqueClients}
           companies={companies}
+          onManageCompanies={() => setIsCompanyModalOpen(true)}
         />
       )}
 
@@ -466,8 +462,8 @@ export const InvoiceDashboard: React.FC = () => {
           onDelete={handleDeleteInvoice}
           onClose={() => setSelectedInvoice(null)}
           onImageClick={setViewerUrl}
-          existingClients={uniqueClients}
           companies={companies}
+          onManageCompanies={() => setIsCompanyModalOpen(true)}
         />
       )}
 

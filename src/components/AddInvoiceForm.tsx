@@ -7,11 +7,11 @@ import { t } from '../translations';
 interface AddInvoiceFormProps {
   onAdd: (newInvoice: Invoice, receiptFile: File | null, proofFile: File | null) => void;
   onClose: () => void;
-  existingClients: string[];
   companies: Company[];
+  onManageCompanies: () => void;
 }
 
-export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, existingClients, companies }) => {
+export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, companies, onManageCompanies }) => {
   const [clientName, setClientName] = useState('');
   const [invoiceCode, setInvoiceCode] = useState('');
   const [totalAmount, setTotalAmount] = useState<number | ''>('');
@@ -166,10 +166,18 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
                 title="Seleccionar de la lista"
               >
                 <option value="">▼</option>
-                {Array.from(new Set([...companies.map(c => c.name), ...existingClients])).sort().map(client => (
+                {Array.from(new Set(companies.map(c => c.name))).sort().map(client => (
                   <option key={client} value={client}>{client}</option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={onManageCompanies}
+                title="Añadir / Borrar Empresas"
+                style={{ ...inputStyle, width: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}
+              >
+                ⚙️
+              </button>
             </div>
           </div>
 

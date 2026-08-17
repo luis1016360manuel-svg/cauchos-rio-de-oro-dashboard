@@ -10,11 +10,11 @@ interface EditInvoiceModalProps {
   onDelete: (id: string) => void;
   onClose: () => void;
   onImageClick: (url: string) => void;
-  existingClients: string[];
   companies: Company[];
+  onManageCompanies: () => void;
 }
 
-export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, existingClients, companies }) => {
+export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, companies, onManageCompanies }) => {
   const [clientName, setClientName] = useState(invoice.clientName);
   const [invoiceCode, setInvoiceCode] = useState(invoice.invoiceCode);
   const [totalAmount, setTotalAmount] = useState<number | ''>(invoice.totalAmount);
@@ -172,10 +172,18 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
                 title="Seleccionar de la lista"
               >
                 <option value="">▼</option>
-                {Array.from(new Set([...companies.map(c => c.name), ...existingClients])).sort().map(client => (
+                {Array.from(new Set(companies.map(c => c.name))).sort().map(client => (
                   <option key={client} value={client}>{client}</option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={onManageCompanies}
+                title="Añadir / Borrar Empresas"
+                style={{ ...inputStyle, width: '44px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}
+              >
+                ⚙️
+              </button>
             </div>
           </div>
 
