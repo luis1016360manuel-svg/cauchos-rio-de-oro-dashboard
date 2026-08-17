@@ -68,8 +68,8 @@ export const generateInventoryPDF = (items: InventoryItem[]) => {
     columnStyles: {
       0: { halign: 'center', cellWidth: 30 },
       1: { fontStyle: 'bold' },
-      3: { halign: 'right', cellWidth: 70, fontSize: 8, textColor: [100, 100, 100] },
-      4: { halign: 'center', fontStyle: 'bold', fontSize: 13, cellWidth: 80, textColor: [0, 0, 0] },
+      3: { halign: 'right', cellWidth: 100 },
+      4: { halign: 'left', fontStyle: 'bold', cellWidth: 160 },
     },
     didDrawPage: (data) => {
       // --- Footer ---
