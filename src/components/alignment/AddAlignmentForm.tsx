@@ -20,7 +20,7 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
     }
   }, [vehiculoTipo, servicioTipo]);
 
-  const montoAlineador = servicioTipo === 'doble_camioneta' ? 15.00 : 7.50;
+  const montoAlineador = (servicioTipo === 'doble_camioneta' || servicioTipo === 'delantera_trasera') ? 15.00 : 7.50;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -260,3 +260,25 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--gold-dark);
 }
+
+/* Global Select and Option Styling for Dark Mode */
+select {
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+select:focus {
+  border-color: var(--gold-light);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+}
+
+select option {
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+  padding: 8px;
+}

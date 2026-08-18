@@ -79,15 +79,23 @@ export const AlignmentDashboard: React.FC = () => {
     return services.filter(s => s.estado_pago === filterState);
   }, [services, filterState]);
 
+  const getServiceWeight = (tipo: string) => {
+    return (tipo === 'delantera_trasera' || tipo === 'doble_camioneta') ? 2 : 1;
+  };
+
   const carrosHoy = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    return services.filter(s => s.fecha.startsWith(today)).length;
+    return services
+      .filter(s => s.fecha.startsWith(today))
+      .reduce((sum, s) => sum + getServiceWeight(s.servicio_tipo), 0);
   }, [services]);
 
   const carrosSemana = useMemo(() => {
     const today = new Date();
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return services.filter(s => new Date(s.fecha) >= lastWeek).length;
+    return services
+      .filter(s => new Date(s.fecha) >= lastWeek)
+      .reduce((sum, s) => sum + getServiceWeight(s.servicio_tipo), 0);
   }, [services]);
 
   const totalAPagar = useMemo(() => {
