@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search, Printer } from 'lucide-react';
+import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Boxes } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
 import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, updateStockWithLog } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
@@ -184,6 +184,30 @@ export const InventoryDashboard: React.FC = () => {
             Inventario <span className="gradient-text">Río de Oro</span>
           </h2>
           <p style={{ color: 'var(--text-muted)' }}>Gestiona tu stock de llantas y mercancía</p>
+        </div>
+
+        {/* KPI Card */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-secondary)',
+          padding: '16px 24px', borderRadius: '16px', border: '1px solid var(--border-color)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ padding: '12px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '12px' }}>
+            <Boxes size={28} color="var(--gold-light)" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+              Unidades en Inventario
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <span style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1 }}>
+                {filteredItems.reduce((acc, item) => acc + item.quantity, 0)}
+              </span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                en {new Set(filteredItems.map(i => i.size)).size} medidas
+              </span>
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '12px' }}>
