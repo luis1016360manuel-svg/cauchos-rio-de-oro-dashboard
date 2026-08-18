@@ -74,6 +74,24 @@ export const addInvoice = async (
     throw new Error('Failed to add invoice');
   }
 
+  // Create initial payment record if there is a paid amount
+  if (newInvoice.paidAmount > 0) {
+    const { error: paymentError } = await supabase
+      .from('invoice_payments')
+      .insert([{
+        invoice_id: newInvoice.id,
+        monto: newInvoice.paidAmount,
+        fecha_abono: new Date().toISOString(),
+        metodo_pago: newInvoice.paymentMethod,
+        referencia: newInvoice.transactionReference,
+        notas: 'Pago inicial al registrar la factura'
+      }]);
+      
+    if (paymentError) {
+      console.error('Failed to insert initial payment record:', paymentError);
+    }
+  }
+
   return newInvoice;
 };
 
