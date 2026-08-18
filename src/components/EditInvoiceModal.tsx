@@ -334,6 +334,18 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
               </div>
             )}
           </div>
+
+          {isAddPaymentOpen && (
+            <AddPaymentModal
+              invoice={invoice}
+              pendingBalance={pendingBalance}
+              onClose={() => setIsAddPaymentOpen(false)}
+              onSuccess={() => {
+                setIsAddPaymentOpen(false);
+                loadPayments();
+              }}
+            />
+          )}
           
           <div style={{ marginTop: '32px', display: 'flex', gap: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -452,17 +464,6 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
 
         </form>
       </div>
-      {isAddPaymentOpen && (
-        <AddPaymentModal
-          invoice={invoice}
-          pendingBalance={pendingBalance}
-          onClose={() => setIsAddPaymentOpen(false)}
-          onSuccess={() => {
-            setIsAddPaymentOpen(false);
-            loadPayments();
-          }}
-        />
-      )}
     </div>
   );
 };

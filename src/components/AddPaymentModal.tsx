@@ -77,21 +77,17 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '24px'
+      background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '12px',
+      padding: '24px', marginTop: '16px', position: 'relative'
     }}>
-      <div className="glass-card" style={{ width: '100%', maxWidth: '550px', padding: '32px', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
-          <X size={24} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)' }}>
+          Registrar Nuevo Abono
+        </h4>
+        <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
+          <X size={20} />
         </button>
-
-        <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
-          Registrar Abono
-        </h3>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-          Factura: {invoice.invoiceCode} - Saldo pendiente: <strong style={{ color: 'var(--gold-light)' }}>${pendingBalance.toFixed(2)}</strong>
-        </p>
+      </div>
 
         {error && (
           <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.9rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -233,7 +229,6 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
             )}
           </button>
         </form>
-      </div>
     </div>
   );
 };
