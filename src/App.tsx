@@ -4,10 +4,11 @@ import { InventoryDashboard } from './components/inventory/InventoryDashboard';
 import { LoginScreen } from './components/LoginScreen';
 import { getSessionUser, logoutUser } from './auth';
 import type { AuthUser } from './auth';
-import { LogOut, User, FileText, Package } from 'lucide-react';
+import { LogOut, User, FileText, Package, Wrench } from 'lucide-react';
 import { t } from './translations';
+import { AlignmentDashboard } from './components/alignment/AlignmentDashboard';
 
-type ViewMode = 'INVOICES' | 'INVENTORY';
+type ViewMode = 'INVOICES' | 'INVENTORY' | 'ALIGNMENT';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -87,6 +88,18 @@ function App() {
               <Package size={16} />
               Inventario
             </button>
+            <button
+              onClick={() => setCurrentView('ALIGNMENT')}
+              style={{
+                padding: '8px 16px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.9rem',
+                background: currentView === 'ALIGNMENT' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                color: currentView === 'ALIGNMENT' ? 'var(--gold-light)' : 'var(--text-muted)',
+                border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+              }}
+            >
+              <Wrench size={16} />
+              Alineación
+            </button>
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '0.9rem' }}>
@@ -115,7 +128,9 @@ function App() {
       </header>
 
       <main style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column' }}>
-        {currentView === 'INVOICES' ? <InvoiceDashboard /> : <InventoryDashboard />}
+        {currentView === 'INVOICES' && <InvoiceDashboard />}
+        {currentView === 'INVENTORY' && <InventoryDashboard />}
+        {currentView === 'ALIGNMENT' && <AlignmentDashboard />}
       </main>
     </div>
   );
