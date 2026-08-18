@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Settings2, Car, Banknote, CalendarRange, CheckCircle2, Trash2 } from 'lucide-react';
+import { Settings2, Car, Banknote, CalendarRange, CheckCircle2, Trash2, RefreshCw } from 'lucide-react';
 import type { AlignmentService } from './AlignmentTypes';
-import { fetchAlignments, createAlignment, deleteAlignment, liquidateAlignments } from './alignmentApi';
+import { fetchAlignments, createAlignment, deleteAlignment, liquidateAlignments, toggleAlignmentStatus, autoCleanupOldAlignments } from './alignmentApi';
 import { AddAlignmentForm } from './AddAlignmentForm';
 
 const formatCurrency = (val: number) => {
@@ -22,6 +22,7 @@ export const AlignmentDashboard: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      await autoCleanupOldAlignments(); // Borrar automáticamente los de >15 días
       const data = await fetchAlignments();
       setServices(data);
     } catch (e) {
@@ -35,6 +36,20 @@ export const AlignmentDashboard: React.FC = () => {
   const handleAdd = async (payload: any) => {
     const newSvc = await createAlignment(payload);
     setServices(prev => [newSvc, ...prev]);
+  };
+
+  const handleToggleStatus = async (svc: AlignmentService) => {
+    const newStatus = svc.estado_pago === 'pagado' ? 'pendiente' : 'pagado';
+    try {
+      await toggleAlignmentStatus(svc.id, newStatus);
+      const now = new Date().toISOString();
+      setServices(prev => prev.map(s => 
+        s.id === svc.id ? { ...s, estado_pago: newStatus, fecha_pago: newStatus === 'pagado' ? now : undefined, updated_at: now } : s
+      ));
+    } catch (e) {
+      console.error(e);
+      alert('Error cambiando estado');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -259,15 +274,22 @@ export const AlignmentDashboard: React.FC = () => {
                     {formatCurrency(svc.monto_alineador)}
                   </td>
                   <td style={{ padding: '16px' }}>
-                    {svc.estado_pago === 'pagado' ? (
-                      <span style={{ padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                        PAGADO
-                      </span>
-                    ) : (
-                      <span style={{ padding: '4px 8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                        PENDIENTE
-                      </span>
-                    )}
+                    <button 
+                      onClick={() => handleToggleStatus(svc)}
+                      title="Clic para cambiar estado (Corrección de error)"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      {svc.estado_pago === 'pagado' ? (
+                        <span style={{ padding: '4px 8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(16, 185, 129, 0.2)', transition: 'opacity 0.2s' }} onMouseOver={e=>e.currentTarget.style.opacity='0.7'} onMouseOut={e=>e.currentTarget.style.opacity='1'}>
+                          PAGADO
+                        </span>
+                      ) : (
+                        <span style={{ padding: '4px 8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, border: '1px solid rgba(239, 68, 68, 0.2)', transition: 'opacity 0.2s' }} onMouseOver={e=>e.currentTarget.style.opacity='0.7'} onMouseOut={e=>e.currentTarget.style.opacity='1'}>
+                          PENDIENTE
+                        </span>
+                      )}
+                      <RefreshCw size={12} color="var(--text-dim)" />
+                    </button>
                   </td>
                   <td style={{ padding: '16px', textAlign: 'center' }}>
                     <button 

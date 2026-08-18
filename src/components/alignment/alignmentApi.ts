@@ -61,3 +61,36 @@ export const deleteAlignment = async (id: string): Promise<void> => {
     throw new Error('No se pudo eliminar el servicio');
   }
 };
+
+export const toggleAlignmentStatus = async (id: string, newStatus: 'pendiente' | 'pagado'): Promise<void> => {
+  const now = newStatus === 'pagado' ? new Date().toISOString() : null;
+  const { error } = await supabase
+    .from('alignment_services')
+    .update({ 
+      estado_pago: newStatus, 
+      fecha_pago: now,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error toggling alignment status:', error);
+    throw new Error('No se pudo cambiar el estado del servicio');
+  }
+};
+
+export const autoCleanupOldAlignments = async (): Promise<void> => {
+  const fifteenDaysAgo = new Date();
+  fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+  const isoDate = fifteenDaysAgo.toISOString();
+
+  const { error } = await supabase
+    .from('alignment_services')
+    .delete()
+    .eq('estado_pago', 'pagado')
+    .lt('fecha_pago', isoDate);
+
+  if (error) {
+    console.error('Error cleaning up old alignments:', error);
+  }
+};
