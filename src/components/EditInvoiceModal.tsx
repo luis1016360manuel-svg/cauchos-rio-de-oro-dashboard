@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Save, Trash2, AlertCircle, Camera, FileText, PlusCircle } from 'lucide-react';
-import type { Invoice, PaymentMethod } from './InvoiceDashboard';
+import type { Invoice } from './InvoiceDashboard';
 import type { Company } from '../api';
 import { t } from '../translations';
 import { fetchPaymentsForInvoice, deletePayment } from '../paymentApi';
@@ -25,14 +25,9 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
   const [dueDate, setDueDate] = useState(invoice.dueDate);
   
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
-  
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(invoice.paymentMethod || 'Zelle');
-  const [transactionReference, setTransactionReference] = useState(invoice.transactionReference || '');
   
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const paymentProofRef = useRef<HTMLInputElement>(null);
 
   // Payments State
   const [payments, setPayments] = useState<InvoicePayment[]>([]);
@@ -111,33 +106,24 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
     setError(null);
 
     const total = Number(totalAmount);
-    const paid = totalAbonado;
 
     if (!invoiceCode.trim()) { setError('Invoice Code is required.'); return; }
     if (!clientName.trim()) { setError('Client Name is required.'); return; }
     if (total <= 0) { setError('Total Amount must be greater than 0.'); return; }
-    if (paid < 0) { setError('Paid Amount cannot be negative.'); return; }
-    if (paid > total) { setError('Paid Amount cannot exceed Total Amount.'); return; }
     if (!dueDate) { setError('Due Date is required.'); return; }
-    if ((paymentMethod === 'Zelle' || paymentMethod === 'Wire') && !transactionReference.trim()) {
-      setError(`Transaction Reference is required for ${paymentMethod} payments.`);
-      return;
-    }
 
     const updatedInvoice: Invoice = {
       ...invoice,
       invoiceCode: invoiceCode.trim(),
       clientName: clientName.trim(),
       totalAmount: total,
-      paidAmount: paid,
+      paidAmount: totalAbonado,
       pendingBalance,
-      status: pendingBalance === 0 ? 'PAID' : (paid > 0 ? 'PARTIALLY_PAID' : 'UNPAID'),
+      status: pendingBalance === 0 ? 'PAID' : (totalAbonado > 0 ? 'PARTIALLY_PAID' : 'UNPAID'),
       dueDate,
-      paymentMethod,
-      transactionReference: transactionReference.trim(),
     };
 
-    onUpdate(updatedInvoice, receiptFile, paymentProofFile);
+    onUpdate(updatedInvoice, receiptFile, null);
   };
 
   const handleDelete = () => {
@@ -258,105 +244,14 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
             </div>
           </div>
 
-          <hr style={{ borderColor: 'var(--border-color)', margin: '16px 0' }} />
-
-          {/* Historial de Abonos */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={18} color="var(--gold-light)" />
-                Historial de Abonos
-              </h4>
-              <button
-                type="button"
-                onClick={() => setIsAddPaymentOpen(true)}
-                disabled={pendingBalance <= 0}
-                style={{
-                  padding: '8px 16px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--gold-light)',
-                  border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.85rem', fontWeight: 600, cursor: pendingBalance <= 0 ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px', opacity: pendingBalance <= 0 ? 0.5 : 1
-                }}
-              >
-                <PlusCircle size={16} />
-                Nuevo Abono
-              </button>
-            </div>
-
-            {isLoadingPayments ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando abonos...</div>
-            ) : payments.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', color: 'var(--text-muted)', border: '1px dashed var(--border-color)' }}>
-                No hay abonos registrados para esta factura.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {payments.map(p => (
-                  <div key={p.id} style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{new Date(p.fecha_abono).toLocaleString('es-ES')}</div>
-                      <div style={{ fontWeight: 800, color: 'var(--gold-light)' }}>${p.monto.toFixed(2)}</div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{p.metodo_pago}</span> {p.referencia ? `• Ref: ${p.referencia}` : ''}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (window.confirm('¿Eliminar abono? Se restaurará el saldo pendiente.')) {
-                            await deletePayment(p.id, invoice.id, p.monto);
-                            loadPayments();
-                          }
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.7 }}
-                        title="Eliminar Abono"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                    {p.notas && <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{p.notas}</div>}
-                    
-                    {p.attachments && p.attachments.length > 0 && (
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-                        {p.attachments.map(att => (
-                          <img
-                            key={att.id}
-                            src={att.file_url}
-                            alt="comprobante"
-                            style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}
-                            onClick={() => onImageClick(att.file_url)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {isAddPaymentOpen && (
-            <AddPaymentModal
-              invoice={invoice}
-              pendingBalance={pendingBalance}
-              onClose={() => setIsAddPaymentOpen(false)}
-              onSuccess={() => {
-                setIsAddPaymentOpen(false);
-                loadPayments();
-              }}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.dueDate} *</label>
+            <input 
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              style={inputStyle}
             />
-          )}
-          
-          <div style={{ marginTop: '32px', display: 'flex', gap: '16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.dueDate} *</label>
-              <input 
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -378,62 +273,6 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
                 style={{ display: 'none' }}
               />
               {renderPreview(receiptFile, invoice.receiptImage)}
-            </div>
-          </div>
-
-          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>{t.paymentDetails}</h4>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.paymentMethod}</label>
-                <select 
-                  value={paymentMethod}
-                  onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
-                  style={inputStyle}
-                >
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="CASH">Cash</option>
-                  <option value="CRYPTO">Crypto</option>
-                  <option value="ZELLE">Zelle</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-
-              {(paymentMethod === 'Zelle' || paymentMethod === 'Wire') && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.transactionReference} *</label>
-                  <input 
-                    type="text" 
-                    value={transactionReference}
-                    onChange={e => setTransactionReference(e.target.value)}
-                    style={inputStyle}
-                    placeholder="e.g. TR-12345"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.paymentProof}</label>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => paymentProofRef.current?.click()}
-                  style={{ ...inputStyle, width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}
-                >
-                  <Camera size={16} color="var(--gold-light)" /> {paymentProofFile ? paymentProofFile.name : (invoice.paymentProofImage ? t.paymentProof : t.clickToUpload)}
-                </button>
-                <input 
-                  type="file" 
-                  accept="image/*,application/pdf" 
-                  capture="environment" 
-                  ref={paymentProofRef} 
-                  onChange={e => handleFileSelect(e, setPaymentProofFile)}
-                  style={{ display: 'none' }}
-                />
-                {renderPreview(paymentProofFile, invoice.paymentProofImage)}
-              </div>
             </div>
           </div>
 
@@ -463,6 +302,97 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
           </div>
 
         </form>
+
+        <hr style={{ borderColor: 'var(--border-color)', margin: '24px 0' }} />
+
+
+
+        {/* Historial de Abonos */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileText size={18} color="var(--gold-light)" />
+              Historial de Abonos
+            </h4>
+            <button
+              type="button"
+              onClick={() => setIsAddPaymentOpen(true)}
+              disabled={pendingBalance <= 0}
+              style={{
+                padding: '8px 16px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--gold-light)',
+                border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.85rem', fontWeight: 600, cursor: pendingBalance <= 0 ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '6px', opacity: pendingBalance <= 0 ? 0.5 : 1
+              }}
+            >
+              <PlusCircle size={16} />
+              Nuevo Abono
+            </button>
+          </div>
+
+          {isLoadingPayments ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando abonos...</div>
+          ) : payments.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', color: 'var(--text-muted)', border: '1px dashed var(--border-color)' }}>
+              No hay abonos registrados para esta factura.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {payments.map(p => (
+                <div key={p.id} style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{new Date(p.fecha_abono).toLocaleString('es-ES')}</div>
+                    <div style={{ fontWeight: 800, color: 'var(--gold-light)' }}>${p.monto.toFixed(2)}</div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{p.metodo_pago}</span> {p.referencia ? `• Ref: ${p.referencia}` : ''}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm('¿Eliminar abono? Se restaurará el saldo pendiente.')) {
+                          await deletePayment(p.id, invoice.id, p.monto);
+                          loadPayments();
+                        }
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.7 }}
+                      title="Eliminar Abono"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  {p.notas && <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{p.notas}</div>}
+                  
+                  {p.attachments && p.attachments.length > 0 && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                      {p.attachments.map(att => (
+                        <img
+                          key={att.id}
+                          src={att.file_url}
+                          alt="comprobante"
+                          style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}
+                          onClick={() => onImageClick(att.file_url)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {isAddPaymentOpen && (
+          <AddPaymentModal
+            invoice={invoice}
+            pendingBalance={pendingBalance}
+            onClose={() => setIsAddPaymentOpen(false)}
+            onSuccess={() => {
+              setIsAddPaymentOpen(false);
+              loadPayments();
+            }}
+          />
+        )}
       </div>
     </div>
   );
