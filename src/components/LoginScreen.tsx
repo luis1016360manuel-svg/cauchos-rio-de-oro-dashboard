@@ -14,21 +14,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Small timeout just for aesthetic loading feel
-    setTimeout(() => {
-      const user = loginUser(username, password);
+    try {
+      const user = await loginUser(username, password);
       if (user) {
         onLoginSuccess(user);
       } else {
         setError(t.loginError);
-        setIsLoading(false);
       }
-    }, 600);
+    } catch (err: any) {
+      if (err.message && (err.message.includes('incorrecta') || err.message.includes('Usuario'))) {
+        setError(err.message);
+      } else {
+        setError(t.loginError);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -94,11 +100,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <button 
             type="submit" 
             disabled={isLoading}
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '8px', padding: '14px', fontSize: '1rem', justifyContent: 'center' }}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              background: 'var(--gold-gradient)',
+              color: '#07090e',
+              border: 'none',
+              fontSize: '1rem',
+              fontWeight: 700,
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              transition: 'transform 0.2s',
+              transform: isLoading ? 'scale(0.98)' : 'scale(1)',
+              opacity: isLoading ? 0.8 : 1
+            }}
           >
             {isLoading ? (
-              <div style={{ width: '20px', height: '20px', border: '2px solid rgba(0,0,0,0.1)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              <div style={{ width: '20px', height: '20px', border: '2px solid rgba(0,0,0,0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             ) : (
               <>
                 <LogIn size={18} />

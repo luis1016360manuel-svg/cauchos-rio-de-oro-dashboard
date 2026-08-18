@@ -1,44 +1,36 @@
+import { supabase } from './supabaseClient';
+
 export interface AuthUser {
   id: string;
   username: string;
-  password?: string; // Optional because we omit it when returning the user session
   role: string;
   displayName: string;
 }
 
-// Secure array of authorized users
-// To add new users, simply add them to this array!
-const AUTHORIZED_USERS: AuthUser[] = [
-  {
-    id: '1',
-    username: 'admin',
-    password: 'adminpassword',
-    role: 'Admin',
-    displayName: 'Administrador Principal'
-  },
-  {
-    id: '2',
-    username: 'cajero',
-    password: 'cajeropassword',
-    role: 'Cajero',
-    displayName: 'Caja 1'
-  }
-];
-
 export const AUTH_SESSION_KEY = 'rio_de_oro_auth_session';
 
-export const loginUser = (username: string, password: string): AuthUser | null => {
-  const user = AUTHORIZED_USERS.find(
-    (u) => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-  );
+export const loginUser = async (username: string, password: string): Promise<AuthUser | null> => {
+  try {
+    const { data, error } = await supabase.rpc('authenticate_user', {
+      p_username: username,
+      p_password: password
+    });
 
-  if (user) {
-    // Clone and remove the password before storing in session
-    const { password: _, ...userSession } = user;
-    sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(userSession));
-    return userSession as AuthUser;
+    if (error) {
+      console.error('Supabase auth error:', error.message);
+      throw new Error(error.message);
+    }
+
+    if (data) {
+      sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(data));
+      return data as AuthUser;
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('Login exception:', err);
+    throw err;
   }
-  return null;
 };
 
 export const logoutUser = (): void => {

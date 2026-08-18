@@ -7,8 +7,9 @@ import type { AuthUser } from './auth';
 import { LogOut, User, FileText, Package, Wrench } from 'lucide-react';
 import { t } from './translations';
 import { AlignmentDashboard } from './components/alignment/AlignmentDashboard';
+import { UserManagement } from './components/UserManagement';
 
-type ViewMode = 'INVOICES' | 'INVENTORY' | 'ALIGNMENT';
+type ViewMode = 'INVOICES' | 'INVENTORY' | 'ALIGNMENT' | 'USERS';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -100,6 +101,21 @@ function App() {
               <Wrench size={16} />
               Alineación
             </button>
+            
+            {currentUser.role === 'admin' && (
+              <button
+                onClick={() => setCurrentView('USERS')}
+                style={{
+                  padding: '8px 16px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.9rem',
+                  background: currentView === 'USERS' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: currentView === 'USERS' ? 'var(--gold-light)' : 'var(--text-muted)',
+                  border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+                }}
+              >
+                <User size={16} />
+                Usuarios
+              </button>
+            )}
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '0.9rem' }}>
@@ -131,6 +147,7 @@ function App() {
         {currentView === 'INVOICES' && <InvoiceDashboard />}
         {currentView === 'INVENTORY' && <InventoryDashboard />}
         {currentView === 'ALIGNMENT' && <AlignmentDashboard />}
+        {currentView === 'USERS' && currentUser.role === 'admin' && <UserManagement />}
       </main>
     </div>
   );
