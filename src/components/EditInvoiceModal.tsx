@@ -15,9 +15,10 @@ interface EditInvoiceModalProps {
   onImageClick: (url: string) => void;
   companies: Company[];
   onManageCompanies: () => void;
+  onLocalSync?: (invoice: Invoice) => void;
 }
 
-export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, companies, onManageCompanies }) => {
+export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, companies, onManageCompanies, onLocalSync }) => {
   const [clientName, setClientName] = useState(invoice.clientName);
   const [invoiceCode, setInvoiceCode] = useState(invoice.invoiceCode);
   const [totalAmount, setTotalAmount] = useState<number | ''>(invoice.totalAmount);
@@ -44,12 +45,14 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
       const data = await fetchPaymentsForInvoice(invoice.id);
       setPayments(data);
       
-      // Update parent state
+      // Update parent state locally without saving to DB or closing the modal
       const calculatedTotalAbonado = data.reduce((sum, p) => sum + Number(p.monto), 0);
       const totalAmt = Number(invoice.totalAmount) || 0;
       const calcStatus = calculatedTotalAbonado >= totalAmt ? 'PAID' : calculatedTotalAbonado > 0 ? 'PARTIALLY_PAID' : 'UNPAID';
       
-      onUpdate({ ...invoice, paidAmount: calculatedTotalAbonado, status: calcStatus }, null, null);
+      if (onLocalSync) {
+        onLocalSync({ ...invoice, paidAmount: calculatedTotalAbonado, status: calcStatus });
+      }
     } catch (e) {
       console.error(e);
     } finally {

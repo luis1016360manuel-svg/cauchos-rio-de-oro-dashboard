@@ -470,6 +470,10 @@ export const InvoiceDashboard: React.FC = () => {
           onImageClick={setViewerUrl}
           companies={companies}
           onManageCompanies={() => setIsCompanyModalOpen(true)}
+          onLocalSync={(updatedInvoice) => {
+            setInvoices(prev => prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv));
+            setSelectedInvoice(updatedInvoice);
+          }}
         />
       )}
 
