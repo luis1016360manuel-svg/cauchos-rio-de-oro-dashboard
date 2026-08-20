@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Settings2, Car, Banknote, CalendarRange, CheckCircle2, Trash2, RefreshCw } from 'lucide-react';
+import { Settings2, Car, Banknote, CalendarRange, CheckCircle2, Trash2, RefreshCw, Edit, X } from 'lucide-react';
 import type { AlignmentService } from './AlignmentTypes';
-import { fetchAlignments, createAlignment, deleteAlignment, liquidateAlignments, toggleAlignmentStatus, autoCleanupOldAlignments } from './alignmentApi';
+import { fetchAlignments, createAlignment, deleteAlignment, liquidateAlignments, toggleAlignmentStatus, autoCleanupOldAlignments, updateAlignment } from './alignmentApi';
 import { AddAlignmentForm } from './AddAlignmentForm';
 
 const formatCurrency = (val: number) => {
@@ -12,6 +12,8 @@ export const AlignmentDashboard: React.FC = () => {
   const [services, setServices] = useState<AlignmentService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [editingService, setEditingService] = useState<AlignmentService | null>(null);
+  const [isWeeklyBreakdownOpen, setIsWeeklyBreakdownOpen] = useState(false);
   const [filterState, setFilterState] = useState<'all' | 'pendiente' | 'pagado'>('all');
   const [isLiquidating, setIsLiquidating] = useState(false);
 
@@ -33,9 +35,15 @@ export const AlignmentDashboard: React.FC = () => {
     }
   };
 
-  const handleAdd = async (payload: any) => {
-    const newSvc = await createAlignment(payload);
-    setServices(prev => [newSvc, ...prev]);
+  const handleSave = async (payload: any) => {
+    if (editingService) {
+      const updatedSvc = await updateAlignment(editingService.id, payload);
+      setServices(prev => prev.map(s => s.id === updatedSvc.id ? updatedSvc : s));
+      setEditingService(null);
+    } else {
+      const newSvc = await createAlignment(payload);
+      setServices(prev => [newSvc, ...prev]);
+    }
   };
 
   const handleToggleStatus = async (svc: AlignmentService) => {
@@ -113,6 +121,30 @@ export const AlignmentDashboard: React.FC = () => {
       .reduce((sum, s) => sum + getServiceWeight(s.servicio_tipo), 0);
   }, [services]);
 
+  const carrosSemanaBreakdown = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // start of today
+    
+    const breakdown = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      const count = services
+        .filter(s => s.fecha.startsWith(dateStr))
+        .reduce((sum, s) => sum + getServiceWeight(s.servicio_tipo), 0);
+        
+      const formattedDate = d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+      breakdown.push({
+        dateStr,
+        label: i === 0 ? `Hoy (${formattedDate})` : formattedDate,
+        count
+      });
+    }
+    return breakdown;
+  }, [services]);
+
   const totalAPagar = useMemo(() => {
     return services.filter(s => s.estado_pago === 'pendiente')
                    .reduce((acc, s) => acc + Number(s.monto_alineador), 0);
@@ -140,7 +172,7 @@ export const AlignmentDashboard: React.FC = () => {
         </div>
 
         <button 
-          onClick={() => setIsAddFormOpen(true)}
+          onClick={() => { setEditingService(null); setIsAddFormOpen(true); }}
           style={{ 
             padding: '10px 24px', borderRadius: 'var(--radius-full)', 
             background: 'var(--gold-gradient)', color: '#07090e', border: 'none', 
@@ -166,7 +198,16 @@ export const AlignmentDashboard: React.FC = () => {
         </div>
 
         {/* KPI 2 */}
-        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div 
+          className="glass-panel" 
+          onClick={() => {
+            console.log('Semana card clicked!');
+            setIsWeeklyBreakdownOpen(true);
+          }}
+          style={{ padding: '24px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer', transition: 'transform 0.2s' }}
+          onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'}
+          onMouseOut={e=>e.currentTarget.style.transform='none'}
+        >
           <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
             <CalendarRange size={28} color="var(--text-dim)" />
           </div>
@@ -292,13 +333,22 @@ export const AlignmentDashboard: React.FC = () => {
                     </button>
                   </td>
                   <td style={{ padding: '16px', textAlign: 'center' }}>
-                    <button 
-                      onClick={() => handleDelete(svc.id)}
-                      title="Eliminar"
-                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                      <button 
+                        onClick={() => { setEditingService(svc); setIsAddFormOpen(true); }}
+                        title="Editar"
+                        style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(svc.id)}
+                        title="Eliminar"
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', opacity: 0.8 }}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -316,9 +366,43 @@ export const AlignmentDashboard: React.FC = () => {
 
       {isAddFormOpen && (
         <AddAlignmentForm 
-          onAdd={handleAdd}
-          onClose={() => setIsAddFormOpen(false)}
+          initialData={editingService || undefined}
+          onAdd={handleSave}
+          onClose={() => {
+            setIsAddFormOpen(false);
+            setEditingService(null);
+          }}
         />
+      )}
+
+      {isWeeklyBreakdownOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '32px', position: 'relative' }}>
+            <button onClick={() => setIsWeeklyBreakdownOpen(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
+              <X size={24} />
+            </button>
+            
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CalendarRange size={22} color="var(--gold-light)" />
+              Resumen Semanal
+            </h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '24px' }}>Desglose de vehículos atendidos por día (últimos 7 días).</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {carrosSemanaBreakdown.map(day => (
+                <div key={day.dateStr} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ color: 'var(--text-main)', fontWeight: 600, textTransform: 'capitalize' }}>{day.label}</span>
+                  <span style={{ color: 'var(--gold-light)', fontWeight: 800, fontSize: '1.2rem' }}>{day.count} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-dim)' }}>veh.</span></span>
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Total</span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: '1.4rem' }}>{carrosSemana}</span>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

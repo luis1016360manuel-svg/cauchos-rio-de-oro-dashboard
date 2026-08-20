@@ -30,6 +30,22 @@ export const createAlignment = async (payload: CreateAlignmentPayload): Promise<
   return data as AlignmentService;
 };
 
+export const updateAlignment = async (id: string, payload: Partial<CreateAlignmentPayload>): Promise<AlignmentService> => {
+  const { data, error } = await supabase
+    .from('alignment_services')
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating alignment:', error);
+    throw new Error('No se pudo actualizar el servicio de alineación');
+  }
+
+  return data as AlignmentService;
+};
+
 export const liquidateAlignments = async (ids: string[]): Promise<void> => {
   if (!ids.length) return;
 

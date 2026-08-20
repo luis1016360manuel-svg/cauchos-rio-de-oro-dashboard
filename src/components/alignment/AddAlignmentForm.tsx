@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wrench, CheckCircle, CarFront } from 'lucide-react';
-import type { CreateAlignmentPayload, VehiculoTipo, ServicioTipo } from './AlignmentTypes';
+import type { CreateAlignmentPayload, VehiculoTipo, ServicioTipo, AlignmentService } from './AlignmentTypes';
 
 interface AddAlignmentFormProps {
   onAdd: (payload: CreateAlignmentPayload) => Promise<void>;
   onClose: () => void;
+  initialData?: AlignmentService;
 }
 
-export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClose }) => {
-  const [placa, setPlaca] = useState('');
-  const [vehiculoTipo, setVehiculoTipo] = useState<VehiculoTipo>('carro');
-  const [servicioTipo, setServicioTipo] = useState<ServicioTipo>('delantera');
+export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClose, initialData }) => {
+  const [placa, setPlaca] = useState(initialData?.placa_vehiculo || '');
+  const [vehiculoTipo, setVehiculoTipo] = useState<VehiculoTipo>(initialData?.vehiculo_tipo || 'carro');
+  const [servicioTipo, setServicioTipo] = useState<ServicioTipo>(initialData?.servicio_tipo || 'delantera');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-ajustar el servicio si cambia a carro y tenía doble_camioneta
@@ -75,7 +76,7 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
 
         <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Wrench size={24} color="var(--gold-light)" />
-          Nuevo Servicio
+          {initialData ? 'Editar Servicio' : 'Nuevo Servicio'}
         </h3>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -157,7 +158,7 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
             ) : (
               <>
                 <CheckCircle size={20} />
-                Guardar Servicio (Enter)
+                {initialData ? 'Guardar Cambios' : 'Guardar Servicio (Enter)'}
               </>
             )}
           </button>
