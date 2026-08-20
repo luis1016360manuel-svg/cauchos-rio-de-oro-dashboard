@@ -48,19 +48,60 @@ export const ImageModal: React.FC<ImageModalProps> = ({ url, onClose }) => {
           )}
         </div>
 
-        <a 
-          href={url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '12px 24px', background: 'var(--gold)', color: '#fff', 
-            borderRadius: '8px', textDecoration: 'none', fontWeight: 600,
-            transition: 'background 0.2s',
-          }}
-        >
-          {t.openOriginal} <ExternalLink size={18} />
-        </a>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <a 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '12px 24px', background: 'rgba(255,255,255,0.1)', color: '#fff', 
+              borderRadius: '8px', textDecoration: 'none', fontWeight: 600,
+              transition: 'background 0.2s', border: '1px solid rgba(255,255,255,0.2)'
+            }}
+            onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.2)'}
+            onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'}
+          >
+            {t.openOriginal} <ExternalLink size={18} />
+          </a>
+          
+          <button
+            onClick={async () => {
+              try {
+                if (navigator.share) {
+                  await navigator.share({
+                    title: 'Comprobante / Documento',
+                    text: 'Mira este comprobante adjunto:',
+                    url: url
+                  });
+                } else {
+                  // Fallback to WhatsApp web if Web Share API is not supported
+                  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent('Revisa este comprobante: ' + url)}`;
+                  window.open(whatsappUrl, '_blank');
+                }
+              } catch (err) {
+                console.error('Error sharing:', err);
+              }
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+              padding: '12px 24px', background: '#25D366', color: '#fff', 
+              borderRadius: '8px', border: 'none', fontWeight: 700,
+              transition: 'background 0.2s',
+            }}
+            onMouseOver={e => e.currentTarget.style.background='#1da851'}
+            onMouseOut={e => e.currentTarget.style.background='#25D366'}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            Compartir
+          </button>
+        </div>
       </div>
     </div>
   );
