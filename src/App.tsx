@@ -4,7 +4,7 @@ import { InventoryDashboard } from './components/inventory/InventoryDashboard';
 import { LoginScreen } from './components/LoginScreen';
 import { getSessionUser, logoutUser } from './auth';
 import type { AuthUser } from './auth';
-import { LogOut, User, FileText, Package, Wrench } from 'lucide-react';
+import { LogOut, User, FileText, Package, Wrench, Sun, Moon } from 'lucide-react';
 import { t } from './translations';
 import { AlignmentDashboard } from './components/alignment/AlignmentDashboard';
 import { UserManagement } from './components/UserManagement';
@@ -15,6 +15,14 @@ function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [currentView, setCurrentView] = useState<ViewMode>('INVOICES');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     // Check if user is already logged in via sessionStorage on app load
@@ -127,19 +135,35 @@ function App() {
               <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{currentUser.role}</span>
             </div>
           </div>
-          <button 
-            onClick={handleLogout}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
-              borderRadius: 'var(--radius-full)', background: 'transparent', border: '1px solid var(--border-color)', 
-              color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-dim)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-          >
-            <LogOut size={14} />
-            {t.logout}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '36px', height: '36px', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
+                color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-dim)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+              title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button 
+              onClick={handleLogout}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
+                borderRadius: 'var(--radius-full)', background: 'transparent', border: '1px solid var(--border-color)', 
+                color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-dim)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+            >
+              <LogOut size={14} />
+              {t.logout}
+            </button>
+          </div>
         </div>
       </header>
 
