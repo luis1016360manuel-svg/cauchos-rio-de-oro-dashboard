@@ -107,6 +107,9 @@ export const InventoryDashboard: React.FC = () => {
       // Refresh loaded history to show it in the table immediately
       const newLoadedHistory = await fetchLoadedHistory();
       setLoadedHistory(newLoadedHistory);
+      
+      alert(`✅ Se registró exitosamente el ingreso de ${quantityToAdd} unidades de la medida ${itemData.size}`);
+      window.location.reload();
     } catch (e) {
       alert('Error guardando inventario');
       throw e;
@@ -132,6 +135,9 @@ export const InventoryDashboard: React.FC = () => {
         setItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
       }
       setHistory(prev => [dischargedRecord, ...prev]);
+      
+      alert(`✅ Se descargaron exitosamente ${quantity} unidades de la medida ${dischargingItem.size}`);
+      window.location.reload();
     } catch (e) {
       alert('Error en la descarga');
     }
@@ -145,6 +151,9 @@ export const InventoryDashboard: React.FC = () => {
       
       const newLoadedHistory = await fetchLoadedHistory();
       setLoadedHistory(newLoadedHistory);
+      
+      alert(`✅ Se cargaron exitosamente ${quantityToAdd} unidades de la medida ${loadingItem.size}`);
+      window.location.reload();
     } catch (e) {
       alert('Error guardando la carga de inventario');
       throw e;
