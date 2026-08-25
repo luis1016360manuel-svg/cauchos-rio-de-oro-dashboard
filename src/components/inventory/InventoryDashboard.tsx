@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
-import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem } from './inventoryApi';
+import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, deleteInventoryLog, deleteInventoryDischarge } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
 import { DischargeStockModal } from './DischargeStockModal';
 import { AddStockModal } from './AddStockModal';
@@ -143,12 +143,33 @@ export const InventoryDashboard: React.FC = () => {
       const savedItem = await quickAddOrUpdateInventoryItem(loadingItem, quantityToAdd);
       setItems(prev => prev.map(i => i.id === savedItem.id ? savedItem : i));
       
-      // Refresh loaded history to show it in the table immediately
       const newLoadedHistory = await fetchLoadedHistory();
       setLoadedHistory(newLoadedHistory);
     } catch (e) {
       alert('Error guardando la carga de inventario');
       throw e;
+    }
+  };
+
+  const handleDeleteLog = async (id: string) => {
+    if (confirm('¿Estás seguro de que deseas eliminar este registro de carga? (Nota: esto no restará el inventario automáticamente)')) {
+      try {
+        await deleteInventoryLog(id);
+        setLoadedHistory(prev => prev.filter(h => h.id !== id));
+      } catch (e) {
+        alert('Error al eliminar el registro');
+      }
+    }
+  };
+
+  const handleDeleteDischarge = async (id: string) => {
+    if (confirm('¿Estás seguro de que deseas eliminar este registro de descarga? (Nota: esto no sumará el inventario automáticamente)')) {
+      try {
+        await deleteInventoryDischarge(id);
+        setHistory(prev => prev.filter(h => h.id !== id));
+      } catch (e) {
+        alert('Error al eliminar el registro');
+      }
     }
   };
 
@@ -398,28 +419,47 @@ export const InventoryDashboard: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Cargado</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cantidad</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha / Hora</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Anterior</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Nueva</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Ingreso (+u)</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {loadedHistory.length === 0 ? (
-                <tr><td colSpan={3} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de cargas</td></tr>
+                <tr>
+                  <td colSpan={6} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No hay historial de cargas recientes.
+                  </td>
+                </tr>
               ) : (
-                loadedHistory.map(record => (
-                  <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                    <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                      {new Date(record.loadedAt).toLocaleString()}
+                loadedHistory.map(item => (
+                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                    <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
+                      {new Date(item.createdAt || item.created_at || new Date()).toLocaleString('es-ES')}
                     </td>
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{record.brand}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
+                    <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: 600 }}>
+                      {item.brand} - {item.size}
                     </td>
-                    <td style={{ padding: '16px' }}>
-                      <span style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <ArrowUpRight size={14} /> {record.quantityLoaded} u.
-                      </span>
+                    <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
+                      {item.cantidad_anterior} u.
+                    </td>
+                    <td style={{ padding: '16px', color: 'var(--text-main)' }}>
+                      {item.cantidad_nueva} u.
+                    </td>
+                    <td style={{ padding: '16px', color: '#10b981', fontWeight: 700 }}>
+                      + {item.cantidad_nueva - item.cantidad_anterior} u.
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'right' }}>
+                      <button 
+                        onClick={() => handleDeleteLog(item.id)}
+                        title="Eliminar Registro"
+                        style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -436,11 +476,12 @@ export const InventoryDashboard: React.FC = () => {
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Descargado</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cantidad</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Referencia</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {history.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas</td></tr>
+                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas</td></tr>
               ) : (
                 history.map(record => (
                   <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
@@ -459,6 +500,15 @@ export const InventoryDashboard: React.FC = () => {
                     <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
                       <div>{record.clientName || '-'}</div>
                       <div style={{ fontSize: '0.8rem' }}>{record.invoiceReference || ''}</div>
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'right' }}>
+                      <button 
+                        onClick={() => handleDeleteDischarge(record.id)}
+                        title="Eliminar Registro"
+                        style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))

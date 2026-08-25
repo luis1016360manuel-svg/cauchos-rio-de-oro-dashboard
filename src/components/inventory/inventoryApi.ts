@@ -185,14 +185,24 @@ export const fetchDischargedHistory = async (): Promise<DischargedItem[]> => {
   const { data, error } = await supabase
     .from('inventory_discharges')
     .select('*')
-    .order('dischargedAt', { ascending: false });
+    .order('dischargedAt', { ascending: false })
+    .limit(100);
 
   if (error) {
     console.error('Error fetching discharged history:', error);
-    throw new Error('Failed to fetch discharged history');
+    throw new Error('No se pudo cargar el historial de descargas');
   }
-
   return data as DischargedItem[];
+};
+
+export const deleteInventoryLog = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('inventory_logs').delete().eq('id', id);
+  if (error) throw error;
+};
+
+export const deleteInventoryDischarge = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('inventory_discharges').delete().eq('id', id);
+  if (error) throw error;
 };
 
 export const dischargeInventory = async (
