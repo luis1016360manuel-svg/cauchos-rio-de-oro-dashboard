@@ -20,4 +20,5 @@ export interface CreateAlignmentPayload {
   servicio_tipo: ServicioTipo;
   placa_vehiculo?: string;
   monto_alineador: number;
+  fecha?: string;
 }

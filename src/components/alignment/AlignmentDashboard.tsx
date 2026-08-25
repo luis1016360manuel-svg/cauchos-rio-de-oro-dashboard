@@ -38,11 +38,17 @@ export const AlignmentDashboard: React.FC = () => {
   const handleSave = async (payload: any) => {
     if (editingService) {
       const updatedSvc = await updateAlignment(editingService.id, payload);
-      setServices(prev => prev.map(s => s.id === updatedSvc.id ? updatedSvc : s));
+      setServices(prev => {
+        const updatedList = prev.map(s => s.id === updatedSvc.id ? updatedSvc : s);
+        return updatedList.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      });
       setEditingService(null);
     } else {
       const newSvc = await createAlignment(payload);
-      setServices(prev => [newSvc, ...prev]);
+      setServices(prev => {
+        const updatedList = [newSvc, ...prev];
+        return updatedList.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      });
     }
   };
 

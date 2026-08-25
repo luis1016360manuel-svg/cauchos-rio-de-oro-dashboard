@@ -70,6 +70,17 @@ export const quickAddOrUpdateInventoryItem = async (
       .single();
 
     if (updateError) throw updateError;
+    
+    // Log the quick update
+    await supabase.from('inventory_logs').insert([{
+      id: `LOG-${Date.now()}`,
+      item_id: existing.id,
+      tipo_movimiento: 'entrada',
+      cantidad_anterior: existing.quantity,
+      cantidad_nueva: existing.quantity + quantityToAdd,
+      createdAt: new Date().toISOString()
+    }]);
+
     return updated as InventoryItem;
   }
 
@@ -92,6 +103,16 @@ export const quickAddOrUpdateInventoryItem = async (
     console.error('Error adding new inventory item:', error);
     throw new Error('Failed to add new inventory item');
   }
+
+  // Log the new item creation
+  await supabase.from('inventory_logs').insert([{
+    id: `LOG-${Date.now()}`,
+    item_id: id,
+    tipo_movimiento: 'entrada',
+    cantidad_anterior: 0,
+    cantidad_nueva: quantityToAdd,
+    createdAt: new Date().toISOString()
+  }]);
 
   return data as InventoryItem;
 };
@@ -236,4 +257,105 @@ export const dischargeInventory = async (
   }
 
   return { updatedItem: updatedItem as InventoryItem, dischargedRecord };
+};
+
+export interface LoadedItem {
+  id: string;
+  itemId: string;
+  brand: string;
+  size: string;
+  quantityLoaded: number;
+  loadedAt: string;
+}
+
+export const fetchLoadedHistory = async (): Promise<LoadedItem[]> => {
+  const { data, error } = await supabase
+    .from('inventory_logs')
+    .select('id, item_id, tipo_movimiento, cantidad_anterior, cantidad_nueva, createdAt, inventory_items(brand, size)')
+    .eq('tipo_movimiento', 'entrada')
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching loaded history:', error);
+    return []; // Return empty array instead of throwing to prevent crashing the whole page
+  }
+
+  return (data || []).map(log => ({
+    id: log.id,
+    itemId: log.item_id,
+    brand: (log.inventory_items as any)?.brand || 'Desconocido',
+    size: (log.inventory_items as any)?.size || '',
+    quantityLoaded: log.cantidad_nueva - log.cantidad_anterior,
+    loadedAt: log.createdAt
+  }));
+};
+
+export interface InventoryMovement {
+  id: string;
+  date: string;
+  item: string;
+  type: 'IN' | 'OUT';
+  qty: number;
+  reason: string;
+  user: string;
+}
+
+export const fetchInventoryMovements = async (): Promise<InventoryMovement[]> => {
+  // Fetch logs (entradas / ajustes)
+  const { data: logs, error: logsError } = await supabase
+    .from('inventory_logs')
+    .select('*, inventory_items(brand, size)')
+    .order('createdAt', { ascending: false })
+    .limit(300);
+
+  // Fetch discharges (salidas)
+  const { data: discharges, error: dischargesError } = await supabase
+    .from('inventory_discharges')
+    .select('*')
+    .order('dischargedAt', { ascending: false })
+    .limit(300);
+
+  if (logsError || dischargesError) {
+    console.error('Error fetching movements:', logsError || dischargesError);
+    return [];
+  }
+
+  const movements: InventoryMovement[] = [];
+
+  if (logs) {
+    logs.forEach(log => {
+      const isEntry = log.cantidad_nueva > log.cantidad_anterior;
+      const diff = Math.abs(log.cantidad_nueva - log.cantidad_anterior);
+      if (diff === 0) return;
+      
+      const itemDesc = log.inventory_items ? `${(log.inventory_items as any).size} ${(log.inventory_items as any).brand}` : 'Artículo Desconocido';
+      
+      movements.push({
+        id: log.id,
+        date: log.createdAt || log.created_at || new Date().toISOString(),
+        item: itemDesc,
+        type: isEntry ? 'IN' : 'OUT',
+        qty: diff,
+        reason: log.tipo_movimiento === 'entrada' ? 'Ingreso/Compra' : 'Ajuste Manual',
+        user: 'admin' // In a real app, join with users table
+      });
+    });
+  }
+
+  if (discharges) {
+    discharges.forEach(d => {
+      movements.push({
+        id: d.id,
+        date: d.dischargedAt,
+        item: `${d.size} ${d.brand}`,
+        type: 'OUT',
+        qty: d.quantityDischarged,
+        reason: d.invoiceReference ? `Factura ${d.invoiceReference}` : (d.clientName ? `Salida: ${d.clientName}` : 'Descarga Manual'),
+        user: 'admin'
+      });
+    });
+  }
+
+  // Sort combined movements by date descending
+  return movements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };

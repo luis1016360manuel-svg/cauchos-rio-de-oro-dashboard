@@ -1,24 +1,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, History, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Boxes } from 'lucide-react';
+import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
-import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, updateStockWithLog } from './inventoryApi';
+import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
 import { DischargeStockModal } from './DischargeStockModal';
+import { AddStockModal } from './AddStockModal';
+import { InventoryMovementsDrawer } from './InventoryMovementsDrawer';
 import { generateInventoryPDF } from './pdfGenerator';
 
 export const InventoryDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'CURRENT' | 'HISTORY'>('CURRENT');
+  const [activeTab, setActiveTab] = useState<'CURRENT' | 'HISTORY_IN' | 'HISTORY_OUT'>('CURRENT');
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [history, setHistory] = useState<DischargedItem[]>([]);
+  const [loadedHistory, setLoadedHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isMovementsDrawerOpen, setIsMovementsDrawerOpen] = useState(false);
   const [dischargingItem, setDischargingItem] = useState<InventoryItem | null>(null);
+  const [loadingItem, setLoadingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Inline Stock Editing State
-  const [editingStockId, setEditingStockId] = useState<string | null>(null);
-  const [tempStockValue, setTempStockValue] = useState<string>('');
+
 
   const filteredItems = useMemo(() => {
     let result = items;
@@ -60,25 +63,35 @@ export const InventoryDashboard: React.FC = () => {
   }, [items, searchQuery]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    let mounted = true;
 
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const [fetchedItems, fetchedHistory] = await Promise.all([
-        fetchInventory(),
-        fetchDischargedHistory()
-      ]);
-      setItems(fetchedItems);
-      setHistory(fetchedHistory);
-    } catch (e) {
-      console.error(e);
-      alert('Error loading inventory data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const loadData = async () => {
+      try {
+        const [inventoryData, historyData, loadedData] = await Promise.all([
+          fetchInventory(),
+          fetchDischargedHistory(),
+          fetchLoadedHistory()
+        ]);
+        
+        if (!mounted) return;
+
+        setItems(inventoryData);
+        setHistory(historyData);
+        setLoadedHistory(loadedData);
+      } catch (e) {
+        if (!mounted) return;
+        alert('Error cargando inventario. Revisa tu conexión a internet.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleQuickAdd = async (itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'quantity'>, quantityToAdd: number) => {
     try {
@@ -91,6 +104,9 @@ export const InventoryDashboard: React.FC = () => {
           return [...prev, savedItem];
         }
       });
+      // Refresh loaded history to show it in the table immediately
+      const newLoadedHistory = await fetchLoadedHistory();
+      setLoadedHistory(newLoadedHistory);
     } catch (e) {
       alert('Error guardando inventario');
       throw e;
@@ -108,58 +124,38 @@ export const InventoryDashboard: React.FC = () => {
     }
   };
 
-  // --- Inline Stock Editing Handlers ---
-  const handleStockEditStart = (item: InventoryItem) => {
-    setEditingStockId(item.id);
-    setTempStockValue(item.quantity.toString());
-  };
-
-  const handleStockEditCancel = () => {
-    setEditingStockId(null);
-    setTempStockValue('');
-  };
-
-  const handleStockEditSubmit = async (item: InventoryItem) => {
-    const newStock = parseInt(tempStockValue);
-    if (isNaN(newStock) || newStock < 0) {
-      alert('La cantidad debe ser un número mayor o igual a 0');
-      handleStockEditCancel();
-      return;
-    }
-
-    if (newStock === item.quantity) {
-      handleStockEditCancel();
-      return; // No change
-    }
-
-    try {
-      const updated = await updateStockWithLog(item, newStock);
-      setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
-      setEditingStockId(null);
-    } catch (e) {
-      alert('Error al actualizar el stock');
-    }
-  };
-  // -------------------------------------
-
-  const handleDischarge = async (quantity: number, clientName?: string, invoiceReference?: string) => {
+  const handleDischargeSubmit = async (quantity: number, clientName: string = '', invoiceReference: string = '') => {
     if (!dischargingItem) return;
     try {
       const { updatedItem, dischargedRecord } = await dischargeInventory(dischargingItem, quantity, clientName, invoiceReference);
-      
-      setItems(prev => prev.map(i => {
-        if (i.id === dischargingItem.id) {
-          return updatedItem || { ...i, quantity: 0 };
-        }
-        return i;
-      }));
-      
+      if (updatedItem) {
+        setItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+      }
       setHistory(prev => [dischargedRecord, ...prev]);
-      setDischargingItem(null);
     } catch (e) {
-      alert('Error discharging stock: ' + (e as Error).message);
+      alert('Error en la descarga');
     }
   };
+
+  const handleStockLoadSubmit = async (quantityToAdd: number) => {
+    if (!loadingItem) return;
+    try {
+      const savedItem = await quickAddOrUpdateInventoryItem(loadingItem, quantityToAdd);
+      setItems(prev => prev.map(i => i.id === savedItem.id ? savedItem : i));
+      
+      // Refresh loaded history to show it in the table immediately
+      const newLoadedHistory = await fetchLoadedHistory();
+      setLoadedHistory(newLoadedHistory);
+    } catch (e) {
+      alert('Error guardando la carga de inventario');
+      throw e;
+    }
+  };
+
+
+  // -------------------------------------
+
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -190,13 +186,19 @@ export const InventoryDashboard: React.FC = () => {
         <div style={{
           display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-secondary)',
           padding: '16px 24px', borderRadius: '16px', border: '1px solid var(--border-color)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ padding: '12px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '12px' }}>
-            <Boxes size={28} color="var(--gold-light)" />
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+          cursor: 'pointer', transition: 'transform 0.2s'
+        }}
+        onClick={() => setIsMovementsDrawerOpen(true)}
+        onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'}
+        onMouseOut={e=>e.currentTarget.style.transform='none'}
+        title="Ver flujo de inventario (cargas y descargas)"
+        >
+          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px' }}>
+            <Layers size={28} color="var(--gold-light)" />
           </div>
           <div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--gold-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
               Unidades en Inventario
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -248,22 +250,34 @@ export const InventoryDashboard: React.FC = () => {
             padding: '8px 24px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.95rem',
             background: activeTab === 'CURRENT' ? 'rgba(255,255,255,0.1)' : 'transparent',
             color: activeTab === 'CURRENT' ? 'var(--gold-light)' : 'var(--text-muted)',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
           }}
         >
           <PackageSearch size={18} />
-          Stock Actual
+          Inventario Actual
         </button>
         <button
-          onClick={() => setActiveTab('HISTORY')}
+          onClick={() => setActiveTab('HISTORY_IN')}
           style={{
             padding: '8px 24px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.95rem',
-            background: activeTab === 'HISTORY' ? 'rgba(255,255,255,0.1)' : 'transparent',
-            color: activeTab === 'HISTORY' ? 'var(--gold-light)' : 'var(--text-muted)',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+            background: activeTab === 'HISTORY_IN' ? 'rgba(255,255,255,0.1)' : 'transparent',
+            color: activeTab === 'HISTORY_IN' ? 'var(--gold-light)' : 'var(--text-muted)',
+            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
           }}
         >
-          <History size={18} />
+          <ArrowUpRight size={18} />
+          Historial de Cargas
+        </button>
+        <button
+          onClick={() => setActiveTab('HISTORY_OUT')}
+          style={{
+            padding: '8px 24px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.95rem',
+            background: activeTab === 'HISTORY_OUT' ? 'rgba(255,255,255,0.1)' : 'transparent',
+            color: activeTab === 'HISTORY_OUT' ? 'var(--gold-light)' : 'var(--text-muted)',
+            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+          }}
+        >
+          <ArrowDownRight size={18} />
           Historial de Descargas
         </button>
       </div>
@@ -322,54 +336,39 @@ export const InventoryDashboard: React.FC = () => {
                     <td style={{ padding: '16px', color: 'var(--text-main)' }}>{formatCurrency(item.unitCost)}</td>
                     <td style={{ padding: '16px', color: 'var(--gold-light)', fontWeight: 600 }}>{formatCurrency(item.sellingPrice)}</td>
                     <td style={{ padding: '16px' }}>
-                      {editingStockId === item.id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <input 
-                            type="number" 
-                            min="0"
-                            value={tempStockValue}
-                            onChange={(e) => setTempStockValue(e.target.value)}
-                            onBlur={() => handleStockEditSubmit(item)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleStockEditSubmit(item);
-                              if (e.key === 'Escape') handleStockEditCancel();
-                            }}
-                            autoFocus
-                            style={{ 
-                              width: '70px', padding: '6px', borderRadius: '6px', 
-                              border: '1px solid #10b981', background: 'rgba(16, 185, 129, 0.1)', 
-                              color: '#10b981', fontWeight: 700, outline: 'none' 
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div 
-                          onClick={() => handleStockEditStart(item)}
-                          title="Haz clic para editar"
-                          style={{ 
-                            display: 'inline-flex', alignItems: 'center', gap: '8px', 
-                            cursor: 'pointer', padding: '4px 8px', borderRadius: '6px',
-                            background: item.quantity === 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                            border: '1px solid transparent',
-                            transition: 'border-color 0.2s'
-                          }}
-                          onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                          onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
-                        >
-                          <span style={{ 
-                            fontWeight: 700, 
-                            color: item.quantity === 0 ? '#ef4444' : (item.quantity < 5 ? '#f59e0b' : 'var(--text-main)') 
-                          }}>
-                            {item.quantity} u.
-                          </span>
-                          {item.quantity === 0 && (
-                            <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ef4444', color: '#fff', borderRadius: '4px', fontWeight: 600 }}>AGOTADO</span>
-                          )}
-                        </div>
-                      )}
+                      <div 
+                        onClick={() => setLoadingItem(item)}
+                        title="Haz clic para cargar más stock"
+                        style={{ 
+                          display: 'inline-flex', alignItems: 'center', gap: '8px', 
+                          cursor: 'pointer', padding: '4px 8px', borderRadius: '6px',
+                          background: item.quantity === 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                          border: '1px solid transparent',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+                        onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
+                      >
+                        <span style={{ 
+                          fontWeight: 700, 
+                          color: item.quantity === 0 ? '#ef4444' : (item.quantity < 5 ? '#f59e0b' : 'var(--text-main)') 
+                        }}>
+                          {item.quantity} u.
+                        </span>
+                        {item.quantity === 0 && (
+                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ef4444', color: '#fff', borderRadius: '4px', fontWeight: 600 }}>AGOTADO</span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => setLoadingItem(item)}
+                          title="Cargar (Ingresar nueva mercancía)"
+                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', cursor: 'pointer' }}
+                        >
+                          <ArrowUpRight size={16} />
+                        </button>
                         <button 
                           onClick={() => setDischargingItem(item)}
                           title="Descargar (Vender)"
@@ -395,7 +394,41 @@ export const InventoryDashboard: React.FC = () => {
           </>
         )}
 
-        {activeTab === 'HISTORY' && (
+        {activeTab === 'HISTORY_IN' && (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Cargado</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cantidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadedHistory.length === 0 ? (
+                <tr><td colSpan={3} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de cargas</td></tr>
+              ) : (
+                loadedHistory.map(record => (
+                  <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                    <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                      {new Date(record.loadedAt).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{record.brand}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <span style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <ArrowUpRight size={14} /> {record.quantityLoaded} u.
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === 'HISTORY_OUT' && (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
@@ -419,7 +452,7 @@ export const InventoryDashboard: React.FC = () => {
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
                     </td>
                     <td style={{ padding: '16px' }}>
-                      <span style={{ color: '#f59e0b', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <ArrowDownRight size={14} /> {record.quantityDischarged} u.
                       </span>
                     </td>
@@ -443,13 +476,26 @@ export const InventoryDashboard: React.FC = () => {
         />
       )}
 
+      {loadingItem && (
+        <AddStockModal
+          item={loadingItem}
+          onClose={() => setLoadingItem(null)}
+          onConfirm={handleStockLoadSubmit}
+        />
+      )}
+
       {dischargingItem && (
         <DischargeStockModal
           item={dischargingItem}
           onClose={() => setDischargingItem(null)}
-          onDischarge={handleDischarge}
+          onDischarge={handleDischargeSubmit}
         />
       )}
+
+      <InventoryMovementsDrawer 
+        isOpen={isMovementsDrawerOpen} 
+        onClose={() => setIsMovementsDrawerOpen(false)} 
+      />
     </div>
   );
 };

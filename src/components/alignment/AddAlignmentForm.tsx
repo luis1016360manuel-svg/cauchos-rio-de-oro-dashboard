@@ -12,6 +12,7 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
   const [placa, setPlaca] = useState(initialData?.placa_vehiculo || '');
   const [vehiculoTipo, setVehiculoTipo] = useState<VehiculoTipo>(initialData?.vehiculo_tipo || 'carro');
   const [servicioTipo, setServicioTipo] = useState<ServicioTipo>(initialData?.servicio_tipo || 'delantera');
+  const [fechaStr, setFechaStr] = useState(initialData?.fecha ? new Date(initialData.fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-ajustar el servicio si cambia a carro y tenía doble_camioneta
@@ -31,7 +32,8 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
         placa_vehiculo: placa.trim() || undefined,
         vehiculo_tipo: vehiculoTipo,
         servicio_tipo: servicioTipo,
-        monto_alineador: montoAlineador
+        monto_alineador: montoAlineador,
+        fecha: fechaStr ? new Date(fechaStr + 'T12:00:00Z').toISOString() : undefined
       });
       onClose();
     } catch (error) {
@@ -81,16 +83,28 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Vehículo / Placa (Opcional)</label>
-            <input 
-              type="text" 
-              value={placa}
-              onChange={e => setPlaca(e.target.value.toUpperCase())}
-              style={inputStyle}
-              placeholder="Ej. ABC-123 o Corolla 2010"
-              autoFocus
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Fecha del Servicio</label>
+              <input 
+                type="date" 
+                value={fechaStr}
+                onChange={e => setFechaStr(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Vehículo / Placa (Opcional)</label>
+              <input 
+                type="text" 
+                value={placa}
+                onChange={e => setPlaca(e.target.value.toUpperCase())}
+                style={inputStyle}
+                placeholder="Ej. ABC-123 o Corolla"
+                autoFocus
+              />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
