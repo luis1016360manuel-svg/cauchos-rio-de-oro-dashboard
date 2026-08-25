@@ -20,6 +20,7 @@ export interface DischargedItem {
   clientName?: string;
   invoiceReference?: string;
   dischargedAt: string;
+  remainingQuantity?: number;
 }
 
 export interface InventoryLog {

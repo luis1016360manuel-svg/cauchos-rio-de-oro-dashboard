@@ -253,7 +253,8 @@ export const dischargeInventory = async (
     quantityDischarged: quantityToDischarge,
     clientName,
     invoiceReference,
-    dischargedAt: new Date().toISOString()
+    dischargedAt: new Date().toISOString(),
+    remainingQuantity: newQuantity > 0 ? newQuantity : 0
   };
 
   const { error: insertError } = await supabase

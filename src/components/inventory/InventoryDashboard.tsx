@@ -483,14 +483,15 @@ export const InventoryDashboard: React.FC = () => {
               <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Descargado</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cantidad</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Referencia</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Descarga</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Quedaron</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Ref.</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {history.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas</td></tr>
+                <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas</td></tr>
               ) : (
                 history.map(record => (
                   <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
@@ -503,8 +504,11 @@ export const InventoryDashboard: React.FC = () => {
                     </td>
                     <td style={{ padding: '16px' }}>
                       <span style={{ color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <ArrowDownRight size={14} /> {record.quantityDischarged} u.
+                        <ArrowDownRight size={14} /> -{record.quantityDischarged} u.
                       </span>
+                    </td>
+                    <td style={{ padding: '16px', color: '#3b82f6', fontWeight: 700 }}>
+                      {record.remainingQuantity !== undefined ? `${record.remainingQuantity} u.` : '-'}
                     </td>
                     <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
                       <div>{record.clientName || '-'}</div>
