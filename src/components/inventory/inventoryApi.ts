@@ -276,6 +276,9 @@ export interface LoadedItem {
   size: string;
   quantityLoaded: number;
   loadedAt: string;
+  cantidad_anterior: number;
+  cantidad_nueva: number;
+  createdAt: string;
 }
 
 export const fetchLoadedHistory = async (): Promise<LoadedItem[]> => {
@@ -296,7 +299,10 @@ export const fetchLoadedHistory = async (): Promise<LoadedItem[]> => {
     brand: (log.inventory_items as any)?.brand || 'Desconocido',
     size: (log.inventory_items as any)?.size || '',
     quantityLoaded: log.cantidad_nueva - log.cantidad_anterior,
-    loadedAt: log.createdAt
+    loadedAt: log.createdAt,
+    cantidad_anterior: log.cantidad_anterior,
+    cantidad_nueva: log.cantidad_nueva,
+    createdAt: log.createdAt
   }));
 };
 
