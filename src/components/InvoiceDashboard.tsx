@@ -158,7 +158,8 @@ export const InvoiceDashboard: React.FC = () => {
       if (invoice.isDeleted) return false;
       const matchesStatus = activeFilter === 'ALL' || invoice.status === activeFilter;
       const matchesSearch = invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            invoice.id.toLowerCase().includes(searchQuery.toLowerCase());
+                            invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            invoice.invoiceCode.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesStatus && matchesSearch;
     });
   }, [invoices, activeFilter, searchQuery]);
