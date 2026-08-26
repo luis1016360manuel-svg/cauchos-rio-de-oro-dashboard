@@ -137,6 +137,7 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
                 <option value="Efectivo ($)">Efectivo ($)</option>
                 <option value="Pago Movil">Pago Móvil</option>
                 <option value="Transferencia (Bs)">Transferencia (Bs)</option>
+                <option value="ACH">ACH</option>
                 <option value="Banesco Panama">Banesco Panamá</option>
                 <option value="Punto de Venta">Punto de Venta</option>
                 <option value="Otro">Otro</option>

@@ -12,7 +12,7 @@ import { t } from '../translations';
 // --- TypeScript Interfaces ---
 
 export type InvoiceStatus = 'UNPAID' | 'PAID' | 'PARTIALLY_PAID';
-export type PaymentMethod = 'Zelle' | 'Cash' | 'Wire' | '';
+export type PaymentMethod = 'Zelle' | 'Cash' | 'Wire' | 'ACH' | '';
 
 export interface Invoice {
   id: string;

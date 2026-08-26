@@ -85,7 +85,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
       setError('Due Date is required.');
       return;
     }
-    if (paymentMethod && (paymentMethod === 'Zelle' || paymentMethod === 'Wire') && !transactionReference.trim()) {
+    if (paymentMethod && (paymentMethod === 'Zelle' || paymentMethod === 'Wire' || paymentMethod === 'ACH') && !transactionReference.trim()) {
       setError(`Transaction Reference is required for ${paymentMethod} payments.`);
       return;
     }
@@ -275,12 +275,13 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
                 >
                   <option value="">Por Cobrar (Pendiente)</option>
                   <option value="Zelle">Zelle</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Wire">Wire Transfer</option>
+                  <option value="Cash">Efectivo</option>
+                  <option value="Wire">Transferencia Bancaria (Wire)</option>
+                  <option value="ACH">Transferencia ACH</option>
                 </select>
               </div>
 
-              {paymentMethod && (paymentMethod === 'Zelle' || paymentMethod === 'Wire') && (
+              {paymentMethod && (paymentMethod === 'Zelle' || paymentMethod === 'Wire' || paymentMethod === 'ACH') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{t.transactionReference} *</label>
                   <input 
