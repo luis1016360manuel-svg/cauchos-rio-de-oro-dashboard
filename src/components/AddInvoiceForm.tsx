@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { X, PlusCircle, AlertCircle, Camera, FileText } from 'lucide-react';
+import { X, PlusCircle, AlertCircle, Camera, FileText, Sparkles } from 'lucide-react';
 import type { Invoice, InvoiceStatus, PaymentMethod } from './InvoiceDashboard';
 import type { Company } from '../api';
 import { t } from '../translations';
+import { scanInvoiceWithAI } from '../aiScanner';
 
 interface AddInvoiceFormProps {
   onAdd: (newInvoice: Invoice, receiptFile: File | null, proofFile: File | null) => void;
@@ -22,9 +23,29 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
   const [transactionReference, setTransactionReference] = useState('');
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const paymentProofRef = useRef<HTMLInputElement>(null);
+  const proofInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAIScan = async () => {
+    if (!receiptFile) return;
+    setIsScanning(true);
+    setError('');
+    try {
+      const data = await scanInvoiceWithAI(receiptFile);
+      if (data.clientName) setClientName(data.clientName);
+      if (data.invoiceCode) setInvoiceCode(data.invoiceCode);
+      if (data.totalAmount) {
+        setTotalAmount(data.totalAmount);
+        setPaidAmount(0);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al procesar la imagen con IA.');
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: File | null) => void) => {
     const file = e.target.files?.[0];
@@ -38,9 +59,25 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
     const isPdf = file.type === 'application/pdf';
     const dataUrl = URL.createObjectURL(file);
     return (
-      <div style={{ width: '40px', height: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+      <div 
+        onClick={() => window.open(dataUrl, '_blank')}
+        title="Clic para ver en pantalla completa"
+        style={{ 
+          width: '80px', 
+          height: '80px', 
+          borderRadius: '8px', 
+          overflow: 'hidden', 
+          border: '1px solid var(--border-color)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          background: 'rgba(255,255,255,0.05)',
+          cursor: 'pointer',
+          flexShrink: 0
+        }}
+      >
         {isPdf ? (
-          <FileText size={14} color="var(--gold-light)" />
+          <FileText size={24} color="var(--gold-light)" />
         ) : (
           <img src={dataUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
@@ -259,6 +296,30 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
                 style={{ display: 'none' }}
               />
               {renderPreview(receiptFile)}
+              
+              {receiptFile && (
+                <button
+                  type="button"
+                  onClick={handleAIScan}
+                  disabled={isScanning}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'var(--gold-gradient)',
+                    color: '#07090e',
+                    border: 'none',
+                    fontWeight: 600,
+                    cursor: isScanning ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    opacity: isScanning ? 0.7 : 1
+                  }}
+                >
+                  <Sparkles size={16} />
+                  {isScanning ? 'Escaneando...' : 'Autocompletar con IA'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -300,7 +361,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <button
                   type="button"
-                  onClick={() => paymentProofRef.current?.click()}
+                  onClick={() => proofInputRef.current?.click()}
                   style={{ ...inputStyle, width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }}
                 >
                   <Camera size={16} color="var(--gold-light)" /> {paymentProofFile ? paymentProofFile.name : t.clickToUpload}
@@ -309,7 +370,7 @@ export const AddInvoiceForm: React.FC<AddInvoiceFormProps> = ({ onAdd, onClose, 
                   type="file" 
                   accept="image/*,application/pdf" 
                   capture="environment" 
-                  ref={paymentProofRef} 
+                  ref={proofInputRef} 
                   onChange={e => handleFileSelect(e, setPaymentProofFile)}
                   style={{ display: 'none' }}
                 />
