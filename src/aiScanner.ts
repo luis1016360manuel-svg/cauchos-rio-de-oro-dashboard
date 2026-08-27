@@ -47,6 +47,40 @@ const compressImage = async (file: File): Promise<string> => {
   });
 };
 
+const generateWithFallback = async (ai: GoogleGenAI, prompt: string, base64Data: string) => {
+  const models = ['gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-2.5-flash'];
+  let lastError: any = null;
+
+  for (const modelName of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: 'image/jpeg'
+            }
+          }
+        ]
+      });
+      return response;
+    } catch (err: any) {
+      console.warn(`[AI] Modelo ${modelName} falló:`, err.message);
+      lastError = err;
+      // Si es un error 503 (Servicio no disponible) o 429 (Demasiadas peticiones), intentamos con el siguiente
+      if (err.status === 503 || err.status === 429 || err.message?.includes('503') || err.message?.includes('demanda') || err.message?.includes('traffic')) {
+        continue;
+      }
+      // Si es otro tipo de error (ej: API Key inválida), lo lanzamos de inmediato
+      throw err;
+    }
+  }
+  
+  throw new Error(lastError?.message || "Todos los servidores gratuitos de Inteligencia Artificial están saturados en este instante. Por favor, intenta de nuevo en 1 minuto.");
+};
+
 export const scanInvoiceWithAI = async (file: File): Promise<ScannedInvoiceData> => {
   try {
     let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('GEMINI_API_KEY');
@@ -80,18 +114,7 @@ export const scanInvoiceWithAI = async (file: File): Promise<ScannedInvoiceData>
       No devuelvas NADA MÁS que el JSON, sin comillas Markdown.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
-      contents: [
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: 'image/jpeg'
-          }
-        }
-      ]
-    });
+    const response = await generateWithFallback(ai, prompt, base64Data);
 
     if (!response.text) {
       throw new Error("Respuesta vacía de la IA.");
@@ -157,18 +180,7 @@ export const scanPaymentWithAI = async (file: File): Promise<ScannedPaymentData>
       No devuelvas NADA MÁS que el JSON, sin comillas Markdown.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash-lite',
-      contents: [
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: 'image/jpeg'
-          }
-        }
-      ]
-    });
+    const response = await generateWithFallback(ai, prompt, base64Data);
 
     if (!response.text) {
       throw new Error("Respuesta vacía de la IA.");
