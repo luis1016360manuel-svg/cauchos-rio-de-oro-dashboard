@@ -27,16 +27,20 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
   const [error, setError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const aiFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAIScan = async () => {
-    if (files.length === 0) {
-      setError('Por favor, adjunta primero la foto del recibo.');
-      return;
-    }
+  const handleDirectAIScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Add file to list
+    setFiles(prev => [...prev, file]);
+    
+    // Start scan
     setIsScanning(true);
     setError('');
     try {
-      const data = await scanPaymentWithAI(files[0]);
+      const data = await scanPaymentWithAI(file);
       if (data.monto) setMonto(data.monto);
       if (data.fecha) setFechaAbono(data.fecha);
       if (data.referencia) setReferencia(data.referencia);
@@ -44,6 +48,8 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
       setError(err.message || 'Error al procesar el recibo con IA.');
     } finally {
       setIsScanning(false);
+      // Reset input so the same file can be selected again if needed
+      if (aiFileInputRef.current) aiFileInputRef.current.value = '';
     }
   };
 
@@ -197,20 +203,46 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
               multiple
               style={{ display: 'none' }}
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                width: '100%', padding: '24px', border: '2px dashed var(--border-color)', borderRadius: '8px',
-                background: 'rgba(255,255,255,0.02)', color: 'var(--text-dim)', cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--gold-light)'}
-              onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
-            >
-              <Upload size={24} />
-              <span>Haz clic para subir comprobantes (Opcional)</span>
-            </button>
+            <input
+              type="file"
+              ref={aiFileInputRef}
+              onChange={handleDirectAIScan}
+              accept="image/*"
+              style={{ display: 'none' }}
+            />
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => aiFileInputRef.current?.click()}
+                disabled={isScanning}
+                style={{
+                  flex: 1, padding: '16px', borderRadius: '8px',
+                  background: 'var(--gold-gradient)', color: '#07090e', border: 'none',
+                  fontWeight: 600, cursor: isScanning ? 'not-allowed' : 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                  transition: 'all 0.2s', opacity: isScanning ? 0.7 : 1
+                }}
+              >
+                <Sparkles size={24} />
+                <span>{isScanning ? 'Escaneando...' : 'Escanear con IA'}</span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  flex: 1, padding: '16px', border: '2px dashed var(--border-color)', borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.02)', color: 'var(--text-dim)', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--gold-light)'}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}
+              >
+                <Upload size={24} />
+                <span>Subir manual</span>
+              </button>
+            </div>
             
             {files.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
@@ -228,30 +260,6 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
                     </div>
                   ))}
                 </div>
-                
-                <button
-                  type="button"
-                  onClick={handleAIScan}
-                  disabled={isScanning}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    background: 'var(--gold-gradient)',
-                    color: '#07090e',
-                    border: 'none',
-                    fontWeight: 600,
-                    cursor: isScanning ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    opacity: isScanning ? 0.7 : 1,
-                    width: 'fit-content'
-                  }}
-                >
-                  <Sparkles size={16} />
-                  {isScanning ? 'Escaneando Comprobante...' : 'Autocompletar Datos con IA'}
-                </button>
               </div>
             )}
           </div>
