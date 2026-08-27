@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { X, Save, Upload, AlertCircle, Trash2 } from 'lucide-react';
+import { X, Save, Upload, AlertCircle, Trash2, Sparkles } from 'lucide-react';
 import type { Invoice, PaymentMethod } from './InvoiceDashboard';
+import { scanPaymentWithAI } from '../aiScanner';
 import { addPayment } from '../paymentApi';
 
 interface AddPaymentModalProps {
@@ -22,9 +23,29 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
   const [notas, setNotas] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAIScan = async () => {
+    if (files.length === 0) {
+      setError('Por favor, adjunta primero la foto del recibo.');
+      return;
+    }
+    setIsScanning(true);
+    setError('');
+    try {
+      const data = await scanPaymentWithAI(files[0]);
+      if (data.monto) setMonto(data.monto);
+      if (data.fecha) setFechaAbono(data.fecha);
+      if (data.referencia) setReferencia(data.referencia);
+    } catch (err: any) {
+      setError(err.message || 'Error al procesar el recibo con IA.');
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -192,19 +213,45 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
             </button>
             
             {files.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '12px' }}>
-                {files.map((file, i) => (
-                  <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                    <img src={URL.createObjectURL(file)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(i)}
-                      style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', borderRadius: '50%', padding: '4px', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  {files.map((file, i) => (
+                    <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <img src={URL.createObjectURL(file)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.7)', border: 'none', color: '#fff', borderRadius: '50%', padding: '4px', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={handleAIScan}
+                  disabled={isScanning}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'var(--gold-gradient)',
+                    color: '#07090e',
+                    border: 'none',
+                    fontWeight: 600,
+                    cursor: isScanning ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    opacity: isScanning ? 0.7 : 1,
+                    width: 'fit-content'
+                  }}
+                >
+                  <Sparkles size={16} />
+                  {isScanning ? 'Escaneando Comprobante...' : 'Autocompletar Datos con IA'}
+                </button>
               </div>
             )}
           </div>

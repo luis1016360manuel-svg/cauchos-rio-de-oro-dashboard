@@ -118,3 +118,79 @@ export const scanInvoiceWithAI = async (file: File): Promise<ScannedInvoiceData>
     throw new Error(error.message || "No se pudieron extraer los datos. Por favor, ingresa los datos a mano.");
   }
 };
+
+export interface ScannedPaymentData {
+  monto: number;
+  referencia: string;
+  fecha: string;
+}
+
+export const scanPaymentWithAI = async (file: File): Promise<ScannedPaymentData> => {
+  try {
+    let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('GEMINI_API_KEY');
+    
+    if (!apiKey) {
+      const userInput = window.prompt("Vercel no logró cargar la llave secreta.\\n\\nPor favor, pega tu API Key de Gemini aquí. Se guardará de forma segura en tu navegador para futuros usos:");
+      if (!userInput || !userInput.trim()) {
+        throw new Error("No se proporcionó la API Key. Operación cancelada.");
+      }
+      apiKey = userInput.trim();
+      localStorage.setItem('GEMINI_API_KEY', apiKey);
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const base64Data = await compressImage(file);
+
+    const prompt = `
+      Eres un extractor de datos de recibos de pago. Analiza esta captura de pantalla o recibo de transferencia (ej: Zelle, Pago Móvil, Wire, ACH, efectivo).
+      Extrae los siguientes datos:
+      1. monto: El dinero enviado o pagado (solo el número, ej: 150.00).
+      2. referencia: El número de confirmación, referencia o ID de la transacción. Si no hay, déjalo vacío.
+      3. fecha: La fecha del pago en formato YYYY-MM-DD. Si no hay fecha clara, déjalo vacío.
+
+      Devuelve SOLO un JSON con esta estructura exacta:
+      {
+        "monto": 150.00,
+        "referencia": "TR-123456",
+        "fecha": "2024-05-20"
+      }
+      No devuelvas NADA MÁS que el JSON, sin comillas Markdown.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash-lite',
+      contents: [
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: 'image/jpeg'
+          }
+        }
+      ]
+    });
+
+    if (!response.text) {
+      throw new Error("Respuesta vacía de la IA.");
+    }
+
+    let text = response.text.trim();
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    
+    if (start !== -1 && end !== -1) {
+      text = text.substring(start, end + 1);
+    }
+
+    const data = JSON.parse(text);
+
+    return {
+      monto: Number(data.monto) || 0,
+      referencia: data.referencia || '',
+      fecha: data.fecha || ''
+    };
+  } catch (error: any) {
+    console.error("AI Scan Error:", error);
+    throw new Error(error.message || "No se pudieron extraer los datos. Por favor, ingresa los datos a mano.");
+  }
+};
