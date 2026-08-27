@@ -49,10 +49,17 @@ const compressImage = async (file: File): Promise<string> => {
 
 export const scanInvoiceWithAI = async (file: File): Promise<ScannedInvoiceData> => {
   try {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('GEMINI_API_KEY');
+    
     if (!apiKey) {
-      throw new Error("La API Key de Gemini no está configurada en Vercel. Por favor verifica las Variables de Entorno.");
+      const userInput = window.prompt("Vercel no logró cargar la llave secreta.\n\nPor favor, pega tu API Key de Gemini aquí. Se guardará de forma segura en tu navegador para futuros usos:");
+      if (!userInput || !userInput.trim()) {
+        throw new Error("No se proporcionó la API Key. Operación cancelada.");
+      }
+      apiKey = userInput.trim();
+      localStorage.setItem('GEMINI_API_KEY', apiKey);
     }
+
     const ai = new GoogleGenAI({ apiKey });
 
     // 1. Comprimir la imagen para acelerar el envío (de 5MB a ~200KB)
