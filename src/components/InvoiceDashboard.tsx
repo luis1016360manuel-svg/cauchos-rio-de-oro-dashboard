@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2, Trash2, Calendar } from 'lucide-react';
+import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2, Trash2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchInvoices, addInvoice, updateInvoice, softDeleteInvoice, restoreInvoice, permanentlyDeleteInvoice, fetchCompanies, addCompany, deleteCompany, checkDuplicateInvoice } from '../api';
 import type { Company } from '../api';
 import { AddInvoiceForm } from './AddInvoiceForm';
@@ -47,6 +47,8 @@ export const InvoiceDashboard: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | '7DAYS' | 'THIS_MONTH' | 'THIS_YEAR'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number | 'ALL'>(15);
 
   useEffect(() => {
     const loadData = async () => {
@@ -234,16 +236,32 @@ export const InvoiceDashboard: React.FC = () => {
   };
 
   const filteredInvoices = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
     return invoices.filter(invoice => {
       if (invoice.isDeleted) return false;
       const matchesStatus = activeFilter === 'ALL' || invoice.status === activeFilter;
-      const matchesSearch = invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            invoice.invoiceCode.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !q || 
+                            invoice.clientName.toLowerCase().includes(q) || 
+                            invoice.id.toLowerCase().includes(q) ||
+                            invoice.invoiceCode.toLowerCase().includes(q) ||
+                            (invoice.transactionReference && invoice.transactionReference.toLowerCase().includes(q)) ||
+                            invoice.totalAmount.toString().includes(q);
       const matchesDate = isWithinDateFilter(invoice.dueDate);
       return matchesStatus && matchesSearch && matchesDate;
     });
   }, [invoices, activeFilter, searchQuery, dateFilter]);
+
+  const totalFilteredCount = filteredInvoices.length;
+  const effectiveLimit = itemsPerPage === 'ALL' ? totalFilteredCount : itemsPerPage;
+  const totalPages = itemsPerPage === 'ALL' ? 1 : Math.max(1, Math.ceil(totalFilteredCount / effectiveLimit));
+
+  const startIndex = itemsPerPage === 'ALL' ? 0 : (currentPage - 1) * effectiveLimit;
+  const endIndex = itemsPerPage === 'ALL' ? totalFilteredCount : Math.min(totalFilteredCount, startIndex + effectiveLimit);
+
+  const paginatedInvoices = useMemo(() => {
+    if (itemsPerPage === 'ALL') return filteredInvoices;
+    return filteredInvoices.slice(startIndex, endIndex);
+  }, [filteredInvoices, startIndex, endIndex, itemsPerPage]);
 
   const deletedInvoices = useMemo(() => {
     return invoices.filter(invoice => invoice.isDeleted);
@@ -252,9 +270,9 @@ export const InvoiceDashboard: React.FC = () => {
   // Categorize for rendering if 'ALL' is selected
   const sortByDate = (a: Invoice, b: Invoice) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
 
-  const unpaidInvoices = filteredInvoices.filter(inv => inv.status === 'UNPAID').sort(sortByDate);
-  const partiallyPaidInvoices = filteredInvoices.filter(inv => inv.status === 'PARTIALLY_PAID').sort(sortByDate);
-  const paidInvoices = filteredInvoices.filter(inv => inv.status === 'PAID');
+  const unpaidInvoices = useMemo(() => paginatedInvoices.filter(inv => inv.status === 'UNPAID').sort(sortByDate), [paginatedInvoices]);
+  const partiallyPaidInvoices = useMemo(() => paginatedInvoices.filter(inv => inv.status === 'PARTIALLY_PAID').sort(sortByDate), [paginatedInvoices]);
+  const paidInvoices = useMemo(() => paginatedInvoices.filter(inv => inv.status === 'PAID'), [paginatedInvoices]);
 
   const getStatusConfig = (status: InvoiceStatus) => {
     switch (status) {
@@ -424,7 +442,7 @@ export const InvoiceDashboard: React.FC = () => {
                 type="text" 
                 placeholder={t.searchPlaceholder} 
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 style={{
                   padding: '10px 16px 10px 38px',
                   borderRadius: 'var(--radius-full)',
@@ -447,7 +465,7 @@ export const InvoiceDashboard: React.FC = () => {
                 return (
                   <button
                     key={filter}
-                    onClick={() => setDateFilter(filter)}
+                    onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
                     style={{
                       padding: '5px 12px',
                       borderRadius: 'var(--radius-full)',
@@ -471,7 +489,7 @@ export const InvoiceDashboard: React.FC = () => {
               {(['ALL', 'UNPAID', 'PARTIALLY_PAID', 'PAID'] as const).map(filter => (
                 <button
                   key={filter}
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => { setActiveFilter(filter); setCurrentPage(1); }}
                   style={{
                     padding: '6px 14px',
                     borderRadius: 'var(--radius-full)',
@@ -488,6 +506,146 @@ export const InvoiceDashboard: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* ── High-Visibility Pagination & Summary Bar ── */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08), rgba(0, 0, 0, 0.35))',
+          border: '1px solid rgba(212, 175, 55, 0.25)',
+          borderRadius: '16px',
+          padding: '14px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+          marginBottom: '32px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+        }}>
+          {/* Left: Summary & Global search indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{
+              background: 'rgba(212, 175, 55, 0.15)',
+              border: '1px solid rgba(212, 175, 55, 0.35)',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-full)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <FileText size={16} color="var(--gold-light)" />
+              <span style={{ fontSize: '0.9rem', color: '#fff', fontWeight: 600 }}>
+                {itemsPerPage === 'ALL' 
+                  ? `Mostrando todas las ${totalFilteredCount} facturas` 
+                  : `Mostrando facturas ${startIndex + 1} - ${endIndex} de ${totalFilteredCount}`}
+              </span>
+            </div>
+
+            {searchQuery.trim() && (
+              <span style={{
+                fontSize: '0.82rem',
+                color: 'var(--gold-light)',
+                background: 'rgba(0,0,0,0.3)',
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px dashed rgba(212,175,55,0.4)'
+              }}>
+                🔍 Búsqueda en todo el historial: {totalFilteredCount} coincidencias
+              </span>
+            )}
+          </div>
+
+          {/* Right: Page size selector and page buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-dim)' }}>Mostrar:</span>
+              {([15, 30, 50, 'ALL'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => { setItemsPerPage(size); setCurrentPage(1); }}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: itemsPerPage === size ? 700 : 500,
+                    background: itemsPerPage === size ? 'var(--gold-gradient)' : 'rgba(255,255,255,0.05)',
+                    color: itemsPerPage === size ? '#07090e' : 'var(--text-muted)',
+                    border: itemsPerPage === size ? 'none' : '1px solid var(--border-color)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {size === 'ALL' ? 'Todas' : size}
+                </button>
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: currentPage === 1 ? 'rgba(255,255,255,0.02)' : 'rgba(212,175,55,0.15)',
+                    border: `1px solid ${currentPage === 1 ? 'var(--border-color)' : 'rgba(212,175,55,0.4)'}`,
+                    color: currentPage === 1 ? 'var(--text-muted)' : 'var(--gold-light)',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <ChevronLeft size={15} /> Anterior
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: currentPage === pageNum ? 700 : 500,
+                      background: currentPage === pageNum ? 'var(--gold-gradient)' : 'rgba(255,255,255,0.05)',
+                      color: currentPage === pageNum ? '#07090e' : 'var(--text-main)',
+                      border: currentPage === pageNum ? 'none' : '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      boxShadow: currentPage === pageNum ? '0 0 10px rgba(212, 175, 55, 0.4)' : 'none',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: currentPage === totalPages ? 'rgba(255,255,255,0.02)' : 'rgba(212,175,55,0.15)',
+                    border: `1px solid ${currentPage === totalPages ? 'var(--border-color)' : 'rgba(212,175,55,0.4)'}`,
+                    color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--gold-light)',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}
+                >
+                  Siguiente <ChevronRight size={15} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -556,6 +714,85 @@ export const InvoiceDashboard: React.FC = () => {
               <Filter size={48} color="var(--text-dim)" style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
               <h4 style={{ fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '8px' }}>{t.noInvoices}</h4>
               <p style={{ color: 'var(--text-muted)' }}>{t.dashboardSubtitle}</p>
+            </div>
+          )}
+
+          {/* Bottom Pagination Bar */}
+          {totalPages > 1 && itemsPerPage !== 'ALL' && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingTop: '20px',
+              borderTop: '1px solid var(--border-color)',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-dim)' }}>
+                Página {currentPage} de {totalPages} ({totalFilteredCount} facturas en total)
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    background: currentPage === 1 ? 'rgba(255,255,255,0.02)' : 'rgba(212,175,55,0.15)',
+                    border: `1px solid ${currentPage === 1 ? 'var(--border-color)' : 'rgba(212,175,55,0.4)'}`,
+                    color: currentPage === 1 ? 'var(--text-muted)' : 'var(--gold-light)',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <ChevronLeft size={15} /> Anterior
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: currentPage === pageNum ? 700 : 500,
+                      background: currentPage === pageNum ? 'var(--gold-gradient)' : 'rgba(255,255,255,0.05)',
+                      color: currentPage === pageNum ? '#07090e' : 'var(--text-main)',
+                      border: currentPage === pageNum ? 'none' : '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    background: currentPage === totalPages ? 'rgba(255,255,255,0.02)' : 'rgba(212,175,55,0.15)',
+                    border: `1px solid ${currentPage === totalPages ? 'var(--border-color)' : 'rgba(212,175,55,0.4)'}`,
+                    color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--gold-light)',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}
+                >
+                  Siguiente <ChevronRight size={15} />
+                </button>
+              </div>
             </div>
           )}
 
