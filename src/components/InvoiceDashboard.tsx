@@ -74,6 +74,27 @@ export const InvoiceDashboard: React.FC = () => {
   }, []);
 
   const handleAddInvoice = async (newInvoice: Invoice, receiptFile: File | null, proofFile: File | null) => {
+    // Check for duplicates before saving
+    const isDuplicate = invoices.some(inv => 
+      !inv.isDeleted &&
+      inv.clientName.toLowerCase().trim() === newInvoice.clientName.toLowerCase().trim() &&
+      inv.invoiceCode.toLowerCase().trim() === newInvoice.invoiceCode.toLowerCase().trim() &&
+      inv.totalAmount === newInvoice.totalAmount
+    );
+
+    if (isDuplicate) {
+      const confirmAdd = window.confirm(
+        `¡Atención! Ya existe una factura registrada con estos datos:\n\n` +
+        `Empresa: ${newInvoice.clientName}\n` +
+        `Código: ${newInvoice.invoiceCode}\n` +
+        `Monto: $${newInvoice.totalAmount}\n\n` +
+        `¿Estás seguro de que deseas guardarla de nuevo? (Podría ser un duplicado por error)`
+      );
+      if (!confirmAdd) {
+        return; // Stop execution if the user cancels
+      }
+    }
+
     try {
       setIsLoading(true);
       const savedInvoice = await addInvoice(newInvoice, receiptFile, proofFile);
