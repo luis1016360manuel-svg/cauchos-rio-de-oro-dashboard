@@ -305,6 +305,88 @@ select {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: var(--gold-light);
+  font-size: 0.85rem;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: pulse 2s infinite;
+}
+
+/* Layout Utilities */
+.container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.section {
+  padding: 96px 0;
+  position: relative;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glowRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
+}
+
+/* Global Select and Option Styling for Dark Mode */
+select {
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
 select:focus {
   border-color: var(--gold-light);
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
@@ -314,4 +396,91 @@ select option {
   background-color: var(--bg-secondary);
   color: var(--text-main);
   padding: 8px;
+}
+
+/* ─────────────────────────────────────────────
+   Mobile Responsiveness & Anti-Zoom Utilities
+   ───────────────────────────────────────────── */
+
+@media screen and (max-width: 768px) {
+  /* Prevent iOS / Android from auto-zooming when focusing on inputs */
+  input[type="text"],
+  input[type="number"],
+  input[type="password"],
+  input[type="email"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Responsive header layout */
+  .desktop-nav {
+    display: none !important;
+  }
+
+  .mobile-nav-bottom {
+    display: flex !important;
+  }
+
+  .main-content-layout {
+    padding: 1rem 1rem calc(84px + env(safe-area-inset-bottom, 16px)) 1rem !important;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+@media screen and (min-width: 769px) {
+  .mobile-nav-bottom {
+    display: none !important;
+  }
+}
+
+/* Bottom Navigation Bar */
+.mobile-nav-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(13, 17, 26, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(212, 175, 55, 0.25);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.bottom-nav-item.active {
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
+.bottom-nav-item.active svg {
+  color: var(--gold-light);
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5));
 }

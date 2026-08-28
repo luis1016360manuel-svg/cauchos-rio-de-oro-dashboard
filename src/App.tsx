@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { LoginScreen } from './components/LoginScreen';
 import { getSessionUser, logoutUser } from './auth';
 import type { AuthUser } from './auth';
@@ -100,7 +100,7 @@ function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <nav style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: 'var(--radius-full)' }}>
+            <nav className="desktop-nav" style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: 'var(--radius-full)' }}>
               <button
                 onClick={() => setCurrentView('INVOICES')}
                 style={{
@@ -214,13 +214,13 @@ function App() {
                 onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
               >
                 <LogOut size={14} />
-                {t.logout}
+                <span className="hide-on-mobile">{t.logout}</span>
               </button>
             </div>
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+        <main className="main-content-layout" style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column' }}>
           <Suspense fallback={<ViewLoadingFallback />}>
             {currentView === 'INVOICES' && <InvoiceDashboard />}
             {currentView === 'INVENTORY' && <InventoryDashboard />}
@@ -228,6 +228,40 @@ function App() {
             {currentView === 'USERS' && currentUser.role === 'admin' && <UserManagement />}
           </Suspense>
         </main>
+
+        {/* ── Mobile Bottom Navigation Bar ── */}
+        <nav className="mobile-nav-bottom">
+          <button
+            onClick={() => setCurrentView('INVOICES')}
+            className={`bottom-nav-item ${currentView === 'INVOICES' ? 'active' : ''}`}
+          >
+            <FileText size={20} />
+            <span>Facturas</span>
+          </button>
+          <button
+            onClick={() => setCurrentView('INVENTORY')}
+            className={`bottom-nav-item ${currentView === 'INVENTORY' ? 'active' : ''}`}
+          >
+            <Package size={20} />
+            <span>Inventario</span>
+          </button>
+          <button
+            onClick={() => setCurrentView('ALIGNMENT')}
+            className={`bottom-nav-item ${currentView === 'ALIGNMENT' ? 'active' : ''}`}
+          >
+            <Wrench size={20} />
+            <span>Alineación</span>
+          </button>
+          {currentUser.role === 'admin' && (
+            <button
+              onClick={() => setCurrentView('USERS')}
+              className={`bottom-nav-item ${currentView === 'USERS' ? 'active' : ''}`}
+            >
+              <User size={20} />
+              <span>Usuarios</span>
+            </button>
+          )}
+        </nav>
 
         <AISettingsModal
           isOpen={isAISettingsOpen}
