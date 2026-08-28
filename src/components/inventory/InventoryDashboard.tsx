@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers, Brain } from 'lucide-react';
+import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers, Brain, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
 import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, deleteInventoryLog, deleteInventoryDischarge } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
@@ -52,7 +52,53 @@ export const InventoryDashboard: React.FC = () => {
     }
   };
 
+  // ── History Pagination & Date Filter State ──
+  const [historyDateFilter, setHistoryDateFilter] = useState<'ALL' | 'TODAY' | '7DAYS' | '30DAYS'>('ALL');
+  const [pageIn, setPageIn] = useState(1);
+  const [pageOut, setPageOut] = useState(1);
+  const PAGE_SIZE = 20;
 
+  const isWithinDateFilter = (dateStr?: string) => {
+    if (!dateStr || historyDateFilter === 'ALL') return true;
+    const itemDate = new Date(dateStr);
+    const now = new Date();
+    if (historyDateFilter === 'TODAY') {
+      return itemDate.toDateString() === now.toDateString();
+    }
+    if (historyDateFilter === '7DAYS') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      return itemDate >= sevenDaysAgo;
+    }
+    if (historyDateFilter === '30DAYS') {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      return itemDate >= thirtyDaysAgo;
+    }
+    return true;
+  };
+
+  const filteredLoadedHistory = useMemo(() => {
+    return loadedHistory.filter(item => isWithinDateFilter(item.createdAt || item.created_at));
+  }, [loadedHistory, historyDateFilter]);
+
+  const paginatedLoadedHistory = useMemo(() => {
+    const start = (pageIn - 1) * PAGE_SIZE;
+    return filteredLoadedHistory.slice(start, start + PAGE_SIZE);
+  }, [filteredLoadedHistory, pageIn]);
+
+  const totalPagesIn = Math.max(1, Math.ceil(filteredLoadedHistory.length / PAGE_SIZE));
+
+  const filteredDischargedHistory = useMemo(() => {
+    return history.filter(record => isWithinDateFilter(record.dischargedAt));
+  }, [history, historyDateFilter]);
+
+  const paginatedDischargedHistory = useMemo(() => {
+    const start = (pageOut - 1) * PAGE_SIZE;
+    return filteredDischargedHistory.slice(start, start + PAGE_SIZE);
+  }, [filteredDischargedHistory, pageOut]);
+
+  const totalPagesOut = Math.max(1, Math.ceil(filteredDischargedHistory.length / PAGE_SIZE));
 
   const filteredItems = useMemo(() => {
     let result = items;
@@ -514,109 +560,249 @@ export const InventoryDashboard: React.FC = () => {
         )}
 
         {activeTab === 'HISTORY_IN' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha / Hora</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Anterior</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Nueva</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Ingreso (+u)</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadedHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No hay historial de cargas recientes.
-                  </td>
+          <div>
+            {/* Filter toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={16} color="var(--gold-light)" />
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-dim)', fontWeight: 500 }}>Filtrar por fecha:</span>
+                {(['ALL', 'TODAY', '7DAYS', '30DAYS'] as const).map((filter) => {
+                  const labels = { ALL: 'Todos', TODAY: 'Hoy', '7DAYS': '7 Días', '30DAYS': '30 Días' };
+                  const isSelected = historyDateFilter === filter;
+                  return (
+                    <button
+                      key={filter}
+                      onClick={() => { setHistoryDateFilter(filter); setPageIn(1); }}
+                      style={{
+                        padding: '5px 12px', borderRadius: 'var(--radius-full)', fontSize: '0.8rem',
+                        fontWeight: 600, border: isSelected ? '1px solid var(--gold-light)' : '1px solid var(--border-color)',
+                        background: isSelected ? 'rgba(212,175,55,0.15)' : 'transparent',
+                        color: isSelected ? 'var(--gold-light)' : 'var(--text-muted)',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                    >
+                      {labels[filter]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                Mostrando {filteredLoadedHistory.length} registros
+              </span>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha / Hora</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Anterior</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Nueva</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Ingreso (+u)</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
                 </tr>
-              ) : (
-                loadedHistory.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                    <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
-                      {new Date(item.createdAt || item.created_at || new Date()).toLocaleString('es-ES')}
-                    </td>
-                    <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: 600 }}>
-                      {item.brand} - {item.size}
-                    </td>
-                    <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
-                      {item.cantidad_anterior} u.
-                    </td>
-                    <td style={{ padding: '16px', color: 'var(--text-main)' }}>
-                      {item.cantidad_nueva} u.
-                    </td>
-                    <td style={{ padding: '16px', color: '#10b981', fontWeight: 700 }}>
-                      + {item.cantidad_nueva - item.cantidad_anterior} u.
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => handleDeleteLog(item.id)}
-                        title="Eliminar Registro"
-                        style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              </thead>
+              <tbody>
+                {paginatedLoadedHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No hay historial de cargas para el período seleccionado.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  paginatedLoadedHistory.map(item => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                      <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
+                        {new Date(item.createdAt || item.created_at || new Date()).toLocaleString('es-ES')}
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: 600 }}>
+                        {item.brand} - {item.size}
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
+                        {item.cantidad_anterior} u.
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--text-main)' }}>
+                        {item.cantidad_nueva} u.
+                      </td>
+                      <td style={{ padding: '16px', color: '#10b981', fontWeight: 700 }}>
+                        + {item.cantidad_nueva - item.cantidad_anterior} u.
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <button 
+                          onClick={() => handleDeleteLog(item.id)}
+                          title="Eliminar Registro"
+                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+
+            {/* Pagination Controls */}
+            {totalPagesIn > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                  Página {pageIn} de {totalPagesIn}
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setPageIn(p => Math.max(1, p - 1))}
+                    disabled={pageIn === 1}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px',
+                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
+                      color: pageIn === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                      cursor: pageIn === 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem'
+                    }}
+                  >
+                    <ChevronLeft size={14} /> Anterior
+                  </button>
+                  <button
+                    onClick={() => setPageIn(p => Math.min(totalPagesIn, p + 1))}
+                    disabled={pageIn === totalPagesIn}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px',
+                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
+                      color: pageIn === totalPagesIn ? 'var(--text-muted)' : 'var(--text-main)',
+                      cursor: pageIn === totalPagesIn ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem'
+                    }}
+                  >
+                    Siguiente <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'HISTORY_OUT' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Descargado</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Descarga</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Quedaron</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Ref.</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas</td></tr>
-              ) : (
-                history.map(record => (
-                  <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                    <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                      {new Date(record.dischargedAt).toLocaleString()}
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{record.brand} {record.model}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <span style={{ color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <ArrowDownRight size={14} /> -{record.quantityDischarged} u.
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px', color: '#3b82f6', fontWeight: 700 }}>
-                      {record.remainingQuantity !== undefined ? `${record.remainingQuantity} u.` : '-'}
-                    </td>
-                    <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
-                      <div>{record.clientName || '-'}</div>
-                      <div style={{ fontSize: '0.8rem' }}>{record.invoiceReference || ''}</div>
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => handleDeleteDischarge(record.id)}
-                        title="Eliminar Registro"
-                        style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <div>
+            {/* Filter toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={16} color="var(--gold-light)" />
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-dim)', fontWeight: 500 }}>Filtrar por fecha:</span>
+                {(['ALL', 'TODAY', '7DAYS', '30DAYS'] as const).map((filter) => {
+                  const labels = { ALL: 'Todos', TODAY: 'Hoy', '7DAYS': '7 Días', '30DAYS': '30 Días' };
+                  const isSelected = historyDateFilter === filter;
+                  return (
+                    <button
+                      key={filter}
+                      onClick={() => { setHistoryDateFilter(filter); setPageOut(1); }}
+                      style={{
+                        padding: '5px 12px', borderRadius: 'var(--radius-full)', fontSize: '0.8rem',
+                        fontWeight: 600, border: isSelected ? '1px solid var(--gold-light)' : '1px solid var(--border-color)',
+                        background: isSelected ? 'rgba(212,175,55,0.15)' : 'transparent',
+                        color: isSelected ? 'var(--gold-light)' : 'var(--text-muted)',
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                    >
+                      {labels[filter]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                Mostrando {filteredDischargedHistory.length} registros
+              </span>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Descargado</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Descarga</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Quedaron</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Ref.</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedDischargedHistory.length === 0 ? (
+                  <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas para este período</td></tr>
+                ) : (
+                  paginatedDischargedHistory.map(record => (
+                    <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                      <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                        {new Date(record.dischargedAt).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{record.brand} {record.model}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <span style={{ color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <ArrowDownRight size={14} /> -{record.quantityDischarged} u.
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px', color: '#3b82f6', fontWeight: 700 }}>
+                        {record.remainingQuantity !== undefined ? `${record.remainingQuantity} u.` : '-'}
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
+                        <div>{record.clientName || '-'}</div>
+                        <div style={{ fontSize: '0.8rem' }}>{record.invoiceReference || ''}</div>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'right' }}>
+                        <button 
+                          onClick={() => handleDeleteDischarge(record.id)}
+                          title="Eliminar Registro"
+                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+
+            {/* Pagination Controls */}
+            {totalPagesOut > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                  Página {pageOut} de {totalPagesOut}
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setPageOut(p => Math.max(1, p - 1))}
+                    disabled={pageOut === 1}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px',
+                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
+                      color: pageOut === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                      cursor: pageOut === 1 ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem'
+                    }}
+                  >
+                    <ChevronLeft size={14} /> Anterior
+                  </button>
+                  <button
+                    onClick={() => setPageOut(p => Math.min(totalPagesOut, p + 1))}
+                    disabled={pageOut === totalPagesOut}
+                    style={{
+                      padding: '6px 12px', borderRadius: '6px',
+                      background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
+                      color: pageOut === totalPagesOut ? 'var(--text-muted)' : 'var(--text-main)',
+                      cursor: pageOut === totalPagesOut ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem'
+                    }}
+                  >
+                    Siguiente <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

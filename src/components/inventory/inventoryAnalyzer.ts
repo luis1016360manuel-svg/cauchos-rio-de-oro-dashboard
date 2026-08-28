@@ -1,6 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
-import { supabase } from '../../supabaseClient';
+﻿import { supabase } from '../../supabaseClient';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
+import { generateWithAIFallback, parseAIJsonResponse } from '../../services/geminiService';
 
 // ---------------------------------------------------------------
 // Types
@@ -65,71 +65,16 @@ const fetchSalesLast30Days = async (): Promise<SalesData> => {
 };
 
 // ---------------------------------------------------------------
-// Gemini call with model fallback
-// ---------------------------------------------------------------
-
-const callGemini = async (apiKey: string, prompt: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey });
-  const models = ['gemini-3.5-flash-lite', 'gemini-3.7-flash'];
-
-  let lastError: unknown = null;
-
-  for (const modelName of models) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
-      return response.text ?? '';
-    } catch (err: unknown) {
-      console.warn(`[AI Analyzer] Modelo ${modelName} falló:`, (err as Error).message);
-      lastError = err;
-      const errCode = (err as { status?: number; message?: string });
-      if (
-        errCode.status === 503 ||
-        errCode.status === 429 ||
-        errCode.message?.includes('503') ||
-        errCode.message?.includes('429')
-      ) {
-        continue;
-      }
-      throw err;
-    }
-  }
-
-  throw new Error(
-    (lastError as Error)?.message ||
-      'Todos los servidores de IA están ocupados. Intenta de nuevo en 1 minuto.'
-  );
-};
-
-// ---------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------
 
 export const analyzeInventoryWithAI = async (
   currentItems: InventoryItem[]
 ): Promise<AIInventoryAnalysis> => {
-  // 1. Get or ask for API key
-  let apiKey =
-    (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ||
-    localStorage.getItem('GEMINI_API_KEY');
-
-  if (!apiKey) {
-    const userInput = window.prompt(
-      'Para usar el análisis IA necesitas la API Key de Gemini.\nPégala aquí (se guardará en tu navegador):'
-    );
-    if (!userInput?.trim()) {
-      throw new Error('No se proporcionó la API Key. Operación cancelada.');
-    }
-    apiKey = userInput.trim();
-    localStorage.setItem('GEMINI_API_KEY', apiKey);
-  }
-
-  // 2. Fetch sales data from the last 30 days
+  // 1. Fetch sales data from the last 30 days
   const salesData = await fetchSalesLast30Days();
 
-  // 3. Build context object
+  // 2. Build context object
   const valorTotal = currentItems.reduce(
     (acc, item) => acc + item.unitCost * item.quantity,
     0
@@ -150,7 +95,7 @@ export const analyzeInventoryWithAI = async (
     };
   });
 
-  // 4. Build prompt
+  // 3. Build prompt
   const prompt = `
 Eres un experto en gestión de inventario para una empresa de cauchos (neumáticos) llamada "Cauchos Río de Oro".
 Analiza el siguiente inventario y sus ventas de los últimos 30 días.
@@ -194,27 +139,20 @@ Devuelve SOLO un JSON válido con esta estructura exacta. Sin markdown, sin expl
 }
 `;
 
-  // 5. Call Gemini
-  const rawText = await callGemini(apiKey, prompt);
+  // 4. Execute with unified fallback engine
+  try {
+    const rawText = await generateWithAIFallback(prompt);
+    const parsed = parseAIJsonResponse<Omit<AIInventoryAnalysis, 'valor_total_inventario' | 'fecha_analisis'>>(rawText);
 
-  // 6. Parse JSON robustly (strip possible markdown code fences)
-  let text = rawText.trim();
-  // Remove ```json ... ``` wrappers if present
-  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start !== -1 && end !== -1) {
-    text = text.substring(start, end + 1);
+    return {
+      ...parsed,
+      valor_total_inventario: valorTotal,
+      fecha_analisis: new Date().toISOString(),
+    };
+  } catch (err: any) {
+    if (err.message === 'NO_API_KEY') {
+      throw new Error('Configura la API Key de Gemini en el botón de Configuración IA arriba.');
+    }
+    throw err;
   }
-
-  const parsed = JSON.parse(text) as Omit<
-    AIInventoryAnalysis,
-    'valor_total_inventario' | 'fecha_analisis'
-  >;
-
-  return {
-    ...parsed,
-    valor_total_inventario: valorTotal,
-    fecha_analisis: new Date().toISOString(),
-  };
 };

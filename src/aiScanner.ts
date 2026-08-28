@@ -1,4 +1,8 @@
-import { GoogleGenAI } from '@google/genai';
+﻿import {
+  compressImageForAI,
+  generateWithAIFallback,
+  parseAIJsonResponse,
+} from './services/geminiService';
 
 export interface ScannedInvoiceData {
   clientName: string;
@@ -6,100 +10,16 @@ export interface ScannedInvoiceData {
   totalAmount: number;
 }
 
-// Comprimir imagen antes de enviarla para que sea muchísimo más rápido
-const compressImage = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-        resolve(dataUrl.split(',')[1]);
-      };
-      img.onerror = reject;
-    };
-    reader.onerror = reject;
-  });
-};
-
-const generateWithFallback = async (ai: GoogleGenAI, prompt: string, base64Data: string) => {
-  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
-  let lastError: any = null;
-
-  for (const modelName of models) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [
-          prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: 'image/jpeg'
-            }
-          }
-        ]
-      });
-      return response;
-    } catch (err: any) {
-      console.warn(`[AI] Modelo ${modelName} falló:`, err.message);
-      lastError = err;
-      // Si es un error 503 (Servicio no disponible) o 429 (Demasiadas peticiones), intentamos con el siguiente
-      if (err.status === 503 || err.status === 429 || err.message?.includes('503') || err.message?.includes('demanda') || err.message?.includes('traffic')) {
-        continue;
-      }
-      // Si es otro tipo de error (ej: API Key inválida), lo lanzamos de inmediato
-      throw err;
-    }
-  }
-  
-  throw new Error(lastError?.message || "Todos los servidores gratuitos de Inteligencia Artificial están saturados en este instante. Por favor, intenta de nuevo en 1 minuto.");
-};
+export interface ScannedPaymentData {
+  monto: number;
+  referencia: string;
+  fecha: string;
+}
 
 export const scanInvoiceWithAI = async (file: File): Promise<ScannedInvoiceData> => {
   try {
-    let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('GEMINI_API_KEY');
-    
-    if (!apiKey) {
-      const userInput = window.prompt("Vercel no logró cargar la llave secreta.\n\nPor favor, pega tu API Key de Gemini aquí. Se guardará de forma segura en tu navegador para futuros usos:");
-      if (!userInput || !userInput.trim()) {
-        throw new Error("No se proporcionó la API Key. Operación cancelada.");
-      }
-      apiKey = userInput.trim();
-      localStorage.setItem('GEMINI_API_KEY', apiKey);
-    }
+    const base64Data = await compressImageForAI(file, 800, 0.6);
 
-    const ai = new GoogleGenAI({ apiKey });
-
-    // 1. Comprimir la imagen para acelerar el envío (de 5MB a ~200KB)
-    const base64Data = await compressImage(file);
-
-    // 2. Simplificar el prompt para la IA
     const prompt = `
       Eres un extractor de datos. Extrae los datos de esta factura o recibo.
       
@@ -114,55 +34,26 @@ export const scanInvoiceWithAI = async (file: File): Promise<ScannedInvoiceData>
       No devuelvas NADA MÁS que el JSON, sin comillas Markdown.
     `;
 
-    const response = await generateWithFallback(ai, prompt, base64Data);
-
-    if (!response.text) {
-      throw new Error("Respuesta vacía de la IA.");
-    }
-
-    // 3. Extracción robusta del JSON (por si la IA añade texto extra)
-    let text = response.text.trim();
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    
-    if (start !== -1 && end !== -1) {
-      text = text.substring(start, end + 1);
-    }
-
-    const data = JSON.parse(text);
+    const rawText = await generateWithAIFallback(prompt, base64Data);
+    const data = parseAIJsonResponse<any>(rawText);
 
     return {
-      clientName: data.clientName || '',
-      invoiceCode: data.invoiceCode || '',
-      totalAmount: Number(data.totalAmount) || 0
+      clientName: data?.clientName || '',
+      invoiceCode: data?.invoiceCode || '',
+      totalAmount: Number(data?.totalAmount) || 0,
     };
   } catch (error: any) {
-    console.error("AI Scan Error:", error);
-    throw new Error(error.message || "No se pudieron extraer los datos. Por favor, ingresa los datos a mano.");
+    console.error('AI Scan Error:', error);
+    if (error.message === 'NO_API_KEY') {
+      throw new Error('Configura la API Key de Gemini en el botón de Configuración IA arriba.');
+    }
+    throw new Error(error.message || 'No se pudieron extraer los datos. Por favor, ingresa los datos a mano.');
   }
 };
 
-export interface ScannedPaymentData {
-  monto: number;
-  referencia: string;
-  fecha: string;
-}
-
 export const scanPaymentWithAI = async (file: File): Promise<ScannedPaymentData> => {
   try {
-    let apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('GEMINI_API_KEY');
-    
-    if (!apiKey) {
-      const userInput = window.prompt("Vercel no logró cargar la llave secreta.\\n\\nPor favor, pega tu API Key de Gemini aquí. Se guardará de forma segura en tu navegador para futuros usos:");
-      if (!userInput || !userInput.trim()) {
-        throw new Error("No se proporcionó la API Key. Operación cancelada.");
-      }
-      apiKey = userInput.trim();
-      localStorage.setItem('GEMINI_API_KEY', apiKey);
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-    const base64Data = await compressImage(file);
+    const base64Data = await compressImageForAI(file, 800, 0.6);
 
     const prompt = `
       Eres un extractor de datos de recibos de pago. Analiza esta captura de pantalla o recibo de transferencia (ej: Zelle, Pago Móvil, Wire, ACH, efectivo).
@@ -180,29 +71,19 @@ export const scanPaymentWithAI = async (file: File): Promise<ScannedPaymentData>
       No devuelvas NADA MÁS que el JSON, sin comillas Markdown.
     `;
 
-    const response = await generateWithFallback(ai, prompt, base64Data);
-
-    if (!response.text) {
-      throw new Error("Respuesta vacía de la IA.");
-    }
-
-    let text = response.text.trim();
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    
-    if (start !== -1 && end !== -1) {
-      text = text.substring(start, end + 1);
-    }
-
-    const data = JSON.parse(text);
+    const rawText = await generateWithAIFallback(prompt, base64Data);
+    const data = parseAIJsonResponse<any>(rawText);
 
     return {
-      monto: Number(data.monto) || 0,
-      referencia: data.referencia || '',
-      fecha: data.fecha || ''
+      monto: Number(data?.monto) || 0,
+      referencia: data?.referencia || '',
+      fecha: data?.fecha || '',
     };
   } catch (error: any) {
-    console.error("AI Scan Error:", error);
-    throw new Error(error.message || "No se pudieron extraer los datos. Por favor, ingresa los datos a mano.");
+    console.error('AI Scan Error:', error);
+    if (error.message === 'NO_API_KEY') {
+      throw new Error('Configura la API Key de Gemini en el botón de Configuración IA arriba.');
+    }
+    throw new Error(error.message || 'No se pudieron extraer los datos. Por favor, ingresa los datos a mano.');
   }
 };

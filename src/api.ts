@@ -44,6 +44,32 @@ export const fetchInvoices = async (): Promise<Invoice[]> => {
   return data as Invoice[];
 };
 
+export const checkDuplicateInvoice = async (
+  clientName: string,
+  invoiceCode: string,
+  totalAmount: number
+): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('id')
+      .ilike('clientName', clientName.trim())
+      .ilike('invoiceCode', invoiceCode.trim())
+      .eq('totalAmount', totalAmount)
+      .or('isDeleted.is.null,isDeleted.eq.false')
+      .limit(1);
+
+    if (error) {
+      console.warn('Could not check duplicates in cloud:', error);
+      return false;
+    }
+    return (data && data.length > 0);
+  } catch (err) {
+    console.warn('Error checking duplicate in database:', err);
+    return false;
+  }
+};
+
 export const addInvoice = async (
   invoice: Invoice, 
   receiptFile: File | null, 
