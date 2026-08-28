@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers } from 'lucide-react';
+import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers, Brain } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
 import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, deleteInventoryLog, deleteInventoryDischarge } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
@@ -7,6 +7,10 @@ import { DischargeStockModal } from './DischargeStockModal';
 import { AddStockModal } from './AddStockModal';
 import { InventoryMovementsDrawer } from './InventoryMovementsDrawer';
 import { generateInventoryPDF } from './pdfGenerator';
+import { InventoryAIPanel } from './InventoryAIPanel';
+import { analyzeInventoryWithAI } from './inventoryAnalyzer';
+import type { AIInventoryAnalysis } from './inventoryAnalyzer';
+import { toastService } from '../Toast';
 
 export const InventoryDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CURRENT' | 'HISTORY_IN' | 'HISTORY_OUT'>('CURRENT');
@@ -20,6 +24,33 @@ export const InventoryDashboard: React.FC = () => {
   const [dischargingItem, setDischargingItem] = useState<InventoryItem | null>(null);
   const [loadingItem, setLoadingItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ── AI Analysis state ──
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<AIInventoryAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleRunAIAnalysis = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await analyzeInventoryWithAI(items);
+      setAiAnalysis(result);
+    } catch (err: unknown) {
+      setAiError((err as Error).message || 'Error al analizar el inventario con IA.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleOpenAIPanel = () => {
+    setShowAIPanel(true);
+    // Auto-run on first open if no prior analysis
+    if (!aiAnalysis && !aiLoading) {
+      handleRunAIAnalysis();
+    }
+  };
 
 
 
@@ -80,7 +111,7 @@ export const InventoryDashboard: React.FC = () => {
         setLoadedHistory(loadedData);
       } catch (e) {
         if (!mounted) return;
-        alert('Error cargando inventario. Revisa tu conexión a internet.');
+        toastService.error('Error cargando inventario. Revisa tu conexión a internet.');
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -104,25 +135,28 @@ export const InventoryDashboard: React.FC = () => {
           return [...prev, savedItem];
         }
       });
-      // Refresh loaded history to show it in the table immediately
       const newLoadedHistory = await fetchLoadedHistory();
       setLoadedHistory(newLoadedHistory);
-      
-      alert(`✅ Se registró exitosamente el ingreso de ${quantityToAdd} unidades de la medida ${itemData.size}`);
-      window.location.reload();
+      toastService.success(`Ingreso registrado: ${quantityToAdd} u. de ${itemData.size}`);
     } catch (e) {
-      alert('Error guardando inventario');
+      toastService.error('Error guardando inventario');
       throw e;
     }
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este artículo de forma permanente?')) {
+    const ok = await toastService.confirm({
+      message: '¿Estás seguro de que deseas eliminar este artículo de forma permanente?',
+      confirmLabel: 'Sí, eliminar',
+      danger: true,
+    });
+    if (ok) {
       try {
         await deleteInventoryItem(id);
         setItems(prev => prev.filter(i => i.id !== id));
+        toastService.success('Artículo eliminado del inventario.');
       } catch (e) {
-        alert('Error al eliminar el artículo');
+        toastService.error('Error al eliminar el artículo');
       }
     }
   };
@@ -133,13 +167,15 @@ export const InventoryDashboard: React.FC = () => {
       const { updatedItem, dischargedRecord } = await dischargeInventory(dischargingItem, quantity, clientName, invoiceReference);
       if (updatedItem) {
         setItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
+      } else {
+        // quantity reached 0 — update to 0 in local state
+        setItems(prev => prev.map(i => i.id === dischargingItem.id ? { ...i, quantity: 0 } : i));
       }
       setHistory(prev => [dischargedRecord, ...prev]);
-      
-      alert(`✅ Se descargaron exitosamente ${quantity} unidades de la medida ${dischargingItem.size}`);
-      window.location.reload();
+      setDischargingItem(null);
+      toastService.success(`Descarga registrada: ${quantity} u. de ${dischargingItem.size}`);
     } catch (e) {
-      alert('Error en la descarga');
+      toastService.error('Error al registrar la descarga');
     }
   };
 
@@ -148,36 +184,46 @@ export const InventoryDashboard: React.FC = () => {
     try {
       const savedItem = await quickAddOrUpdateInventoryItem(loadingItem, quantityToAdd);
       setItems(prev => prev.map(i => i.id === savedItem.id ? savedItem : i));
-      
       const newLoadedHistory = await fetchLoadedHistory();
       setLoadedHistory(newLoadedHistory);
-      
-      alert(`✅ Se cargaron exitosamente ${quantityToAdd} unidades de la medida ${loadingItem.size}`);
-      window.location.reload();
+      setLoadingItem(null);
+      toastService.success(`Carga registrada: ${quantityToAdd} u. de ${loadingItem.size}`);
     } catch (e) {
-      alert('Error guardando la carga de inventario');
+      toastService.error('Error guardando la carga de inventario');
       throw e;
     }
   };
 
   const handleDeleteLog = async (id: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este registro de carga? (Nota: esto no restará el inventario automáticamente)')) {
+    const ok = await toastService.confirm({
+      message: '¿Eliminar este registro de carga? (No restará el inventario automáticamente)',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (ok) {
       try {
         await deleteInventoryLog(id);
         setLoadedHistory(prev => prev.filter(h => h.id !== id));
+        toastService.success('Registro de carga eliminado.');
       } catch (e) {
-        alert('Error al eliminar el registro');
+        toastService.error('Error al eliminar el registro');
       }
     }
   };
 
   const handleDeleteDischarge = async (id: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este registro de descarga? (Nota: esto no sumará el inventario automáticamente)')) {
+    const ok = await toastService.confirm({
+      message: '¿Eliminar este registro de descarga? (No sumará el inventario automáticamente)',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (ok) {
       try {
         await deleteInventoryDischarge(id);
         setHistory(prev => prev.filter(h => h.id !== id));
+        toastService.success('Registro de descarga eliminado.');
       } catch (e) {
-        alert('Error al eliminar el registro');
+        toastService.error('Error al eliminar el registro');
       }
     }
   };
@@ -257,6 +303,38 @@ export const InventoryDashboard: React.FC = () => {
             <Printer size={18} />
             <span className="hide-on-mobile">Exportar</span>
           </button>
+
+          {/* AI Analysis button */}
+          <button
+            onClick={handleOpenAIPanel}
+            title="Análisis IA del inventario"
+            style={{
+              padding: '10px 18px', borderRadius: 'var(--radius-full)',
+              background: showAIPanel
+                ? 'linear-gradient(135deg, #d4af37, #f5d76e)'
+                : 'rgba(212,175,55,0.1)',
+              color: showAIPanel ? '#07090e' : 'var(--gold-light)',
+              border: `1px solid ${showAIPanel ? 'transparent' : 'rgba(212,175,55,0.3)'}`,
+              fontWeight: 600, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '8px',
+              transition: 'all 0.25s',
+            }}
+            onMouseOver={e => {
+              if (!showAIPanel) {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.2)';
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.5)';
+              }
+            }}
+            onMouseOut={e => {
+              if (!showAIPanel) {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.1)';
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)';
+              }
+            }}
+          >
+            <Brain size={18} />
+            <span className="hide-on-mobile">Análisis IA</span>
+          </button>
           
           <button 
             onClick={() => setIsAddModalOpen(true)}
@@ -271,6 +349,17 @@ export const InventoryDashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* AI Panel — shown above tabs when open */}
+      {showAIPanel && (
+        <InventoryAIPanel
+          analysis={aiAnalysis}
+          isLoading={aiLoading}
+          error={aiError}
+          onAnalyze={handleRunAIAnalysis}
+          onClose={() => setShowAIPanel(false)}
+        />
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '16px' }}>

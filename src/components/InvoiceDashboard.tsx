@@ -8,6 +8,8 @@ import { ImageModal } from './ImageModal';
 import { CompanyManagerModal } from './CompanyManagerModal';
 import { RecycleBinModal } from './RecycleBinModal';
 import { t } from '../translations';
+import { toastService } from './Toast';
+import { supabase } from '../supabaseClient';
 
 // --- TypeScript Interfaces ---
 
@@ -71,6 +73,33 @@ export const InvoiceDashboard: React.FC = () => {
       }
     };
     loadData();
+
+    // ── Supabase Realtime subscription ──
+    const channel = supabase
+      .channel('invoices-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoices' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setInvoices(prev => {
+              const exists = prev.some(i => i.id === (payload.new as Invoice).id);
+              return exists ? prev : [payload.new as Invoice, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setInvoices(prev =>
+              prev.map(i => i.id === (payload.new as Invoice).id ? payload.new as Invoice : i)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setInvoices(prev => prev.filter(i => i.id !== (payload.old as Invoice).id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleAddInvoice = async (newInvoice: Invoice, receiptFile: File | null, proofFile: File | null) => {
@@ -102,7 +131,7 @@ export const InvoiceDashboard: React.FC = () => {
       setIsFormOpen(false);
     } catch (e) {
       console.error('Failed to add', e);
-      alert('Failed to save to cloud.');
+      toastService.error('Error al guardar la factura. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +145,7 @@ export const InvoiceDashboard: React.FC = () => {
       setSelectedInvoice(null);
     } catch (e) {
       console.error('Failed to update', e);
-      alert('Failed to update in cloud.');
+      toastService.error('Error al actualizar la factura.');
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +159,7 @@ export const InvoiceDashboard: React.FC = () => {
       setSelectedInvoice(null);
     } catch (e) {
       console.error('Failed to soft delete', e);
-      alert('Failed to soft delete in cloud. Please try again.');
+      toastService.error('Error al eliminar la factura. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +171,7 @@ export const InvoiceDashboard: React.FC = () => {
       await restoreInvoice(id);
       setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, isDeleted: false, deletedAt: undefined } : inv));
     } catch (err) {
-      alert('Failed to restore invoice');
+      toastService.error('Error al restaurar la factura.');
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +184,7 @@ export const InvoiceDashboard: React.FC = () => {
       await permanentlyDeleteInvoice(invToDelete || id);
       setInvoices(prev => prev.filter(inv => inv.id !== id));
     } catch (err) {
-      alert('Failed to permanently delete');
+      toastService.error('Error al eliminar permanentemente la factura.');
     } finally {
       setIsLoading(false);
     }

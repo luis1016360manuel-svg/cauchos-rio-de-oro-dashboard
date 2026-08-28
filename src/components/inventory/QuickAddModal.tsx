@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Zap, ChevronDown } from 'lucide-react';
 import type { InventoryItem } from './InventoryTypes';
+import { toastService } from '../Toast';
 
 interface QuickAddModalProps {
   onClose: () => void;
@@ -105,7 +106,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ onClose, onSave, e
       setQuantity('1');
       setTimeout(() => sizeInputRef.current?.focus(), 50);
     } catch (e) {
-      alert('Error guardando en inventario');
+      toastService.error('Error guardando en inventario');
     } finally {
       setIsSubmitting(false);
     }

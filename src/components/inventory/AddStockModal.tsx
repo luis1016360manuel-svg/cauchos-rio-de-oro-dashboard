@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ArrowUpRight, PackagePlus } from 'lucide-react';
 import type { InventoryItem } from './InventoryTypes';
+import { toastService } from '../Toast';
 
 interface AddStockModalProps {
   item: InventoryItem;
@@ -22,7 +23,7 @@ export const AddStockModal: React.FC<AddStockModalProps> = ({ item, onClose, onC
       await onConfirm(qty);
       onClose();
     } catch (e) {
-      alert('Error al agregar stock');
+      toastService.error('Error al agregar stock.');
     } finally {
       setIsSubmitting(false);
     }

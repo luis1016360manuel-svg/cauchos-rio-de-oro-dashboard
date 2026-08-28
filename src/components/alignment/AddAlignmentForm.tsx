@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wrench, CheckCircle, CarFront } from 'lucide-react';
 import type { CreateAlignmentPayload, VehiculoTipo, ServicioTipo, AlignmentService } from './AlignmentTypes';
+import { toastService } from '../Toast';
 
 interface AddAlignmentFormProps {
   onAdd: (payload: CreateAlignmentPayload) => Promise<void>;
@@ -38,7 +39,7 @@ export const AddAlignmentForm: React.FC<AddAlignmentFormProps> = ({ onAdd, onClo
       onClose();
     } catch (error) {
       console.error(error);
-      alert('Error al registrar el servicio');
+      toastService.error('Error al registrar el servicio.');
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Building2, Trash2, Phone, FileText, MapPin, PlusCircle, Plus } from 'lucide-react';
 import type { Company } from '../api';
 import { t } from '../translations';
+import { toastService } from './Toast';
 
 interface CompanyManagerModalProps {
   companies: Company[];
@@ -38,14 +39,19 @@ export const CompanyManagerModal: React.FC<CompanyManagerModalProps> = ({ compan
       setIsAdding(false);
     } catch (err) {
       console.error(err);
-      alert(t.errorAddingCompany);
+      toastService.error(t.errorAddingCompany);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm(t.deleteCompanyPrompt)) {
+    const ok = await toastService.confirm({
+      message: t.deleteCompanyPrompt,
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (ok) {
       await onDelete(id);
     }
   };

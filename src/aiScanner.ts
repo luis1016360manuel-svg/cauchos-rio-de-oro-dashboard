@@ -48,7 +48,7 @@ const compressImage = async (file: File): Promise<string> => {
 };
 
 const generateWithFallback = async (ai: GoogleGenAI, prompt: string, base64Data: string) => {
-  const models = ['gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-2.5-flash'];
+  const models = ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastError: any = null;
 
   for (const modelName of models) {

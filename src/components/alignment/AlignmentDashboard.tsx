@@ -3,6 +3,7 @@ import { Settings2, Car, Banknote, CalendarRange, CheckCircle2, Trash2, RefreshC
 import type { AlignmentService } from './AlignmentTypes';
 import { fetchAlignments, createAlignment, deleteAlignment, liquidateAlignments, toggleAlignmentStatus, autoCleanupOldAlignments, updateAlignment } from './alignmentApi';
 import { AddAlignmentForm } from './AddAlignmentForm';
+import { toastService } from '../Toast';
 
 const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
@@ -29,7 +30,7 @@ export const AlignmentDashboard: React.FC = () => {
       setServices(data);
     } catch (e) {
       console.error(e);
-      alert('Error cargando servicios');
+      toastService.error('Error cargando servicios de alineación.');
     } finally {
       setIsLoading(false);
     }
@@ -62,18 +63,24 @@ export const AlignmentDashboard: React.FC = () => {
       ));
     } catch (e) {
       console.error(e);
-      alert('Error cambiando estado');
+      toastService.error('Error cambiando el estado del servicio.');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Eliminar este servicio? Esta acción no se puede deshacer.')) {
+    const ok = await toastService.confirm({
+      message: '¿Eliminar este servicio? Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (ok) {
       try {
         await deleteAlignment(id);
         setServices(prev => prev.filter(s => s.id !== id));
+        toastService.success('Servicio eliminado.');
       } catch (e) {
         console.error(e);
-        alert('Error eliminando servicio');
+        toastService.error('Error eliminando el servicio.');
       }
     }
   };
@@ -82,20 +89,23 @@ export const AlignmentDashboard: React.FC = () => {
     const pendientes = services.filter(s => s.estado_pago === 'pendiente');
     if (!pendientes.length) return;
 
-    if (window.confirm(`¿Confirmas liquidar ${pendientes.length} servicio(s) por un total de ${formatCurrency(totalAPagar)}?`)) {
+    const ok = await toastService.confirm({
+      message: `¿Confirmas liquidar ${pendientes.length} servicio(s) por un total de ${formatCurrency(totalAPagar)}?`,
+      confirmLabel: 'Liquidar',
+    });
+    if (ok) {
       setIsLiquidating(true);
       try {
         const ids = pendientes.map(s => s.id);
         await liquidateAlignments(ids);
-        
-        // Update local state instead of full reload for speed
         const now = new Date().toISOString();
-        setServices(prev => prev.map(s => 
+        setServices(prev => prev.map(s =>
           ids.includes(s.id) ? { ...s, estado_pago: 'pagado', fecha_pago: now, updated_at: now } : s
         ));
+        toastService.success(`${pendientes.length} servicio(s) liquidados correctamente.`);
       } catch (e) {
         console.error(e);
-        alert('Error liquidando servicios');
+        toastService.error('Error liquidando servicios.');
       } finally {
         setIsLiquidating(false);
       }

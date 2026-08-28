@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ArrowDownRight, PackageMinus } from 'lucide-react';
 import type { InventoryItem } from './InventoryTypes';
+import { toastService } from '../Toast';
 
 interface DischargeStockModalProps {
   item: InventoryItem;
@@ -17,7 +18,7 @@ export const DischargeStockModal: React.FC<DischargeStockModalProps> = ({ item, 
     e.preventDefault();
     const qty = parseInt(quantity);
     if (!qty || qty <= 0 || qty > item.quantity) {
-      alert('Cantidad inválida');
+      toastService.warning(`Cantidad inválida. Stock disponible: ${item.quantity} u.`);
       return;
     }
     onDischarge(qty, clientName.trim(), invoiceReference.trim());

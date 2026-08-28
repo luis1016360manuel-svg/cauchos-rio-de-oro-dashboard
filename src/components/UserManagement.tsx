@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { fetchUsers, manageUser } from '../api/userApi';
 import type { AuthUser } from '../auth';
 import { Users, UserPlus, Shield, X, Save, Key } from 'lucide-react';
+import { toastService } from './Toast';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<AuthUser[]>([]);
@@ -72,7 +73,7 @@ export const UserManagement: React.FC = () => {
       await manageUser('UPDATE_STATUS', { id: user.id, isActive: !user.isActive });
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: !user.isActive } : u));
     } catch (e: any) {
-      alert('Error: ' + e.message);
+      toastService.error('Error: ' + e.message);
     }
   };
 

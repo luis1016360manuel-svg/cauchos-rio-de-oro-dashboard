@@ -1,0 +1,220 @@
+import { GoogleGenAI } from '@google/genai';
+import { supabase } from '../../supabaseClient';
+import type { InventoryItem, DischargedItem } from './InventoryTypes';
+
+// ---------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------
+
+export type AlertSeverity = 'CRITICO' | 'MODERADO' | 'SIN_ROTACION' | 'SALUDABLE';
+
+export interface ProductAlert {
+  producto: string;
+  marca: string;
+  talla: string;
+  stock_actual: number;
+  dias_estimados_agotamiento: number | null;
+  unidades_vendidas_30d: number;
+  razon: string;
+  recomendacion: string;
+  severidad: AlertSeverity;
+}
+
+export interface AIInventoryAnalysis {
+  alertas_criticas: ProductAlert[];
+  alertas_moderadas: ProductAlert[];
+  productos_sin_rotacion: ProductAlert[];
+  productos_saludables: ProductAlert[];
+  resumen_general: string;
+  valor_total_inventario: number;
+  fecha_analisis: string;
+}
+
+// ---------------------------------------------------------------
+// Data fetching helpers
+// ---------------------------------------------------------------
+
+interface SalesData {
+  [key: string]: { cantidad: number; marca: string; talla: string };
+}
+
+const fetchSalesLast30Days = async (): Promise<SalesData> => {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data, error } = await supabase
+    .from('inventory_discharges')
+    .select('brand, size, quantityDischarged, dischargedAt')
+    .gte('dischargedAt', thirtyDaysAgo.toISOString());
+
+  if (error) {
+    console.error('Error fetching sales data:', error);
+    return {};
+  }
+
+  const salesMap: SalesData = {};
+  (data as DischargedItem[]).forEach((d) => {
+    const key = `${d.brand}|${d.size}`;
+    if (!salesMap[key]) {
+      salesMap[key] = { cantidad: 0, marca: d.brand, talla: d.size };
+    }
+    salesMap[key].cantidad += d.quantityDischarged;
+  });
+
+  return salesMap;
+};
+
+// ---------------------------------------------------------------
+// Gemini call with model fallback
+// ---------------------------------------------------------------
+
+const callGemini = async (apiKey: string, prompt: string): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey });
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+
+  let lastError: unknown = null;
+
+  for (const modelName of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      });
+      return response.text ?? '';
+    } catch (err: unknown) {
+      console.warn(`[AI Analyzer] Modelo ${modelName} falló:`, (err as Error).message);
+      lastError = err;
+      const errCode = (err as { status?: number; message?: string });
+      if (
+        errCode.status === 503 ||
+        errCode.status === 429 ||
+        errCode.message?.includes('503') ||
+        errCode.message?.includes('429')
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error(
+    (lastError as Error)?.message ||
+      'Todos los servidores de IA están ocupados. Intenta de nuevo en 1 minuto.'
+  );
+};
+
+// ---------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------
+
+export const analyzeInventoryWithAI = async (
+  currentItems: InventoryItem[]
+): Promise<AIInventoryAnalysis> => {
+  // 1. Get or ask for API key
+  let apiKey =
+    (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ||
+    localStorage.getItem('GEMINI_API_KEY');
+
+  if (!apiKey) {
+    const userInput = window.prompt(
+      'Para usar el análisis IA necesitas la API Key de Gemini.\nPégala aquí (se guardará en tu navegador):'
+    );
+    if (!userInput?.trim()) {
+      throw new Error('No se proporcionó la API Key. Operación cancelada.');
+    }
+    apiKey = userInput.trim();
+    localStorage.setItem('GEMINI_API_KEY', apiKey);
+  }
+
+  // 2. Fetch sales data from the last 30 days
+  const salesData = await fetchSalesLast30Days();
+
+  // 3. Build context object
+  const valorTotal = currentItems.reduce(
+    (acc, item) => acc + item.unitCost * item.quantity,
+    0
+  );
+
+  const inventarioContexto = currentItems.map((item) => {
+    const key = `${item.brand}|${item.size}`;
+    const ventasObj = salesData[key];
+    return {
+      marca: item.brand,
+      modelo: item.model || '',
+      talla: item.size,
+      rin: item.rim,
+      stock_actual: item.quantity,
+      precio_venta: item.sellingPrice,
+      costo_unitario: item.unitCost,
+      unidades_vendidas_30d: ventasObj?.cantidad ?? 0,
+    };
+  });
+
+  // 4. Build prompt
+  const prompt = `
+Eres un experto en gestión de inventario para una empresa de cauchos (neumáticos) llamada "Cauchos Río de Oro".
+Analiza el siguiente inventario y sus ventas de los últimos 30 días.
+
+INVENTARIO ACTUAL + VENTAS (últimos 30 días):
+${JSON.stringify(inventarioContexto, null, 2)}
+
+VALOR TOTAL DEL INVENTARIO: $${valorTotal.toFixed(2)}
+
+INSTRUCCIONES DE ANÁLISIS:
+1. Para cada producto, calcula la tasa de venta diaria: unidades_vendidas_30d / 30
+2. Estima días hasta agotamiento: stock_actual / tasa_diaria (si tasa > 0)
+3. Clasifica cada producto en una sola categoría:
+   - CRITICO: stock <= 4 unidades Y tiene ventas recientes (se agota pronto). Si el stock es 0, también es CRITICO.
+   - MODERADO: stock entre 5-9 unidades Y tasa de venta > 0
+   - SIN_ROTACION: 0 ventas en 30 días Y stock > 0. Puede haber sobrestocking o problema de precio.
+   - SALUDABLE: stock >= 10 unidades o situación controlada sin riesgo inmediato
+4. Para los CRITICOS y MODERADOS incluye una recomendación concreta de cuántas unidades pedir.
+5. El resumen_general debe ser claro, directo y útil para el dueño del negocio (en español).
+6. NO incluyas productos con stock 0 Y sin ventas en ninguna categoría, ya que no representan riesgo.
+
+Devuelve SOLO un JSON válido con esta estructura exacta. Sin markdown, sin explicaciones, SOLO el JSON:
+{
+  "alertas_criticas": [
+    {
+      "producto": "marca + talla (ej: Michelin 205/65R16)",
+      "marca": "string",
+      "talla": "string",
+      "stock_actual": 0,
+      "dias_estimados_agotamiento": null,
+      "unidades_vendidas_30d": 0,
+      "razon": "explicación breve en español",
+      "recomendacion": "qué hacer concretamente",
+      "severidad": "CRITICO"
+    }
+  ],
+  "alertas_moderadas": [],
+  "productos_sin_rotacion": [],
+  "productos_saludables": [],
+  "resumen_general": "Resumen de 2-3 oraciones del estado general del inventario."
+}
+`;
+
+  // 5. Call Gemini
+  const rawText = await callGemini(apiKey, prompt);
+
+  // 6. Parse JSON robustly (strip possible markdown code fences)
+  let text = rawText.trim();
+  // Remove ```json ... ``` wrappers if present
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1) {
+    text = text.substring(start, end + 1);
+  }
+
+  const parsed = JSON.parse(text) as Omit<
+    AIInventoryAnalysis,
+    'valor_total_inventario' | 'fecha_analisis'
+  >;
+
+  return {
+    ...parsed,
+    valor_total_inventario: valorTotal,
+    fecha_analisis: new Date().toISOString(),
+  };
+};
