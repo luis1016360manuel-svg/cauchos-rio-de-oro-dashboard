@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2, Trash2 } from 'lucide-react';
+import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2, Trash2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchInvoices, addInvoice, updateInvoice, softDeleteInvoice, restoreInvoice, permanentlyDeleteInvoice, fetchCompanies, addCompany, deleteCompany, checkDuplicateInvoice } from '../api';
 import type { Company } from '../api';
 import { AddInvoiceForm } from './AddInvoiceForm';
@@ -46,6 +46,9 @@ export const InvoiceDashboard: React.FC = () => {
   const [isRecycleBinOpen, setIsRecycleBinOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY' | '7DAYS' | 'THIS_MONTH' | 'THIS_YEAR'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     const loadData = async () => {
@@ -208,6 +211,30 @@ export const InvoiceDashboard: React.FC = () => {
   };
 
   // Filtering Logic
+  const isWithinDateFilter = (dueDateStr?: string) => {
+    if (dateFilter === 'ALL' || !dueDateStr) return true;
+    const invDate = new Date(dueDateStr);
+    const now = new Date();
+    
+    const invYMD = new Date(invDate.getFullYear(), invDate.getMonth(), invDate.getDate()).getTime();
+    const todayYMD = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    if (dateFilter === 'TODAY') {
+      return invYMD === todayYMD;
+    }
+    if (dateFilter === '7DAYS') {
+      const sevenDaysAgo = todayYMD - 7 * 24 * 60 * 60 * 1000;
+      return invYMD >= sevenDaysAgo;
+    }
+    if (dateFilter === 'THIS_MONTH') {
+      return invDate.getFullYear() === now.getFullYear() && invDate.getMonth() === now.getMonth();
+    }
+    if (dateFilter === 'THIS_YEAR') {
+      return invDate.getFullYear() === now.getFullYear();
+    }
+    return true;
+  };
+
   const filteredInvoices = useMemo(() => {
     return invoices.filter(invoice => {
       if (invoice.isDeleted) return false;
@@ -215,9 +242,17 @@ export const InvoiceDashboard: React.FC = () => {
       const matchesSearch = invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             invoice.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             invoice.invoiceCode.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesStatus && matchesSearch;
+      const matchesDate = isWithinDateFilter(invoice.dueDate);
+      return matchesStatus && matchesSearch && matchesDate;
     });
-  }, [invoices, activeFilter, searchQuery]);
+  }, [invoices, activeFilter, searchQuery, dateFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE));
+
+  const paginatedInvoices = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredInvoices.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredInvoices, currentPage]);
 
   const deletedInvoices = useMemo(() => {
     return invoices.filter(invoice => invoice.isDeleted);
@@ -226,9 +261,9 @@ export const InvoiceDashboard: React.FC = () => {
   // Categorize for rendering if 'ALL' is selected
   const sortByDate = (a: Invoice, b: Invoice) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
 
-  const unpaidInvoices = filteredInvoices.filter(inv => inv.status === 'UNPAID').sort(sortByDate);
-  const partiallyPaidInvoices = filteredInvoices.filter(inv => inv.status === 'PARTIALLY_PAID').sort(sortByDate);
-  const paidInvoices = filteredInvoices.filter(inv => inv.status === 'PAID');
+  const unpaidInvoices = paginatedInvoices.filter(inv => inv.status === 'UNPAID').sort(sortByDate);
+  const partiallyPaidInvoices = paginatedInvoices.filter(inv => inv.status === 'PARTIALLY_PAID').sort(sortByDate);
+  const paidInvoices = paginatedInvoices.filter(inv => inv.status === 'PAID');
 
   const getStatusConfig = (status: InvoiceStatus) => {
     switch (status) {
@@ -398,7 +433,7 @@ export const InvoiceDashboard: React.FC = () => {
                 type="text" 
                 placeholder={t.searchPlaceholder} 
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 style={{
                   padding: '10px 16px 10px 38px',
                   borderRadius: 'var(--radius-full)',
@@ -411,12 +446,41 @@ export const InvoiceDashboard: React.FC = () => {
                 }}
               />
             </div>
+
+            {/* Date filter pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-full)', padding: '4px' }}>
+              <Calendar size={15} color="var(--gold-light)" style={{ marginLeft: '8px', marginRight: '2px' }} />
+              {(['ALL', 'TODAY', '7DAYS', 'THIS_MONTH', 'THIS_YEAR'] as const).map(filter => {
+                const labels = { ALL: 'Todas', TODAY: 'Hoy', '7DAYS': '7 Días', THIS_MONTH: 'Este Mes', THIS_YEAR: 'Este Año' };
+                const isSelected = dateFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => { setDateFilter(filter); setCurrentPage(1); }}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      background: isSelected ? 'rgba(212,175,55,0.15)' : 'transparent',
+                      color: isSelected ? 'var(--gold-light)' : 'var(--text-muted)',
+                      border: isSelected ? '1px solid rgba(212,175,55,0.4)' : '1px solid transparent',
+                      fontSize: '0.8rem',
+                      fontWeight: isSelected ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {labels[filter]}
+                  </button>
+                );
+              })}
+            </div>
             
+            {/* Status pills */}
             <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-full)', padding: '4px' }}>
               {(['ALL', 'UNPAID', 'PARTIALLY_PAID', 'PAID'] as const).map(filter => (
                 <button
                   key={filter}
-                  onClick={() => setActiveFilter(filter)}
+                  onClick={() => { setActiveFilter(filter); setCurrentPage(1); }}
                   style={{
                     padding: '6px 14px',
                     borderRadius: 'var(--radius-full)',
@@ -501,6 +565,47 @@ export const InvoiceDashboard: React.FC = () => {
               <Filter size={48} color="var(--text-dim)" style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
               <h4 style={{ fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '8px' }}>{t.noInvoices}</h4>
               <p style={{ color: 'var(--text-muted)' }}>{t.dashboardSubtitle}</p>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              paddingTop: '24px', borderTop: '1px solid var(--border-color)',
+              marginTop: '12px', flexWrap: 'wrap', gap: '12px'
+            }}>
+              <span style={{ fontSize: '0.88rem', color: 'var(--text-dim)' }}>
+                Mostrando {paginatedInvoices.length} de {filteredInvoices.length} facturas — Página {currentPage} de {totalPages}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    padding: '8px 16px', borderRadius: 'var(--radius-full)',
+                    background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                    color: currentPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 500
+                  }}
+                >
+                  <ChevronLeft size={16} /> Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    padding: '8px 16px', borderRadius: 'var(--radius-full)',
+                    background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                    color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--text-main)',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 500
+                  }}
+                >
+                  Siguiente <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           )}
 
