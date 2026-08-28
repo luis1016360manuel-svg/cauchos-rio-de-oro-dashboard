@@ -73,14 +73,23 @@
   color-scheme: light;
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
   background-color: var(--bg-primary);
   background-image: 
     radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.08) 0%, transparent 45%),
@@ -88,33 +97,16 @@ body {
     radial-gradient(circle at 50% 90%, rgba(251, 191, 36, 0.05) 0%, transparent 50%);
   background-attachment: fixed;
   overflow-x: hidden;
+  position: relative;
 }
 
 #root {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-}
-
-/* Form Inputs & iOS Safari Zoom Fix */
-input, select, textarea {
-  font-size: 16px !important; /* Prevents iOS auto-zoom on focus */
-  max-width: 100%;
-}
-
-/* Touch Targets */
-button, select {
-  min-height: 44px; /* Apple recommended minimum touch target */
-}
-
-/* Responsive Table/List Wrapper */
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }
 
 /* Typography */
@@ -174,7 +166,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 10px 20px;
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 0.95rem;
@@ -305,88 +297,6 @@ select {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: var(--radius-full);
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  color: var(--gold-light);
-  font-size: 0.85rem;
-  font-weight: 500;
-  backdrop-filter: blur(4px);
-}
-
-.badge-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #10b981;
-  box-shadow: 0 0 10px #10b981;
-  animation: pulse 2s infinite;
-}
-
-/* Layout Utilities */
-.container {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 0 24px;
-  width: 100%;
-}
-
-.section {
-  padding: 96px 0;
-  position: relative;
-}
-
-/* Animations */
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes glowRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--gold-dark);
-}
-
-/* Global Select and Option Styling for Dark Mode */
-select {
-  background-color: var(--bg-secondary);
-  color: var(--text-main);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  outline: none;
-  font-family: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
 select:focus {
   border-color: var(--gold-light);
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
@@ -402,6 +312,19 @@ select option {
    Mobile Responsiveness & Anti-Zoom Utilities
    ───────────────────────────────────────────── */
 
+/* App Header */
+.app-header {
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
 @media screen and (max-width: 768px) {
   /* Prevent iOS / Android from auto-zooming when focusing on inputs */
   input[type="text"],
@@ -414,14 +337,14 @@ select option {
     font-size: 16px !important;
   }
 
-  /* Responsive header layout */
+  /* Responsive header layout for Mobile Safari / Chrome */
   .app-header {
-    padding: 10px 14px !important;
-    gap: 8px !important;
+    padding: 10px 12px !important;
+    gap: 6px !important;
   }
 
   .header-brand-text {
-    font-size: 1.05rem !important;
+    font-size: 1rem !important;
   }
 
   .header-user-info {
@@ -433,7 +356,7 @@ select option {
   }
 
   .header-actions-wrapper {
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .mobile-nav-bottom {
@@ -441,7 +364,7 @@ select option {
   }
 
   .main-content-layout {
-    padding: 1rem 1rem calc(84px + env(safe-area-inset-bottom, 16px)) 1rem !important;
+    padding: 1rem 0.75rem calc(84px + env(safe-area-inset-bottom, 16px)) 0.75rem !important;
   }
 
   .hide-on-mobile {
@@ -461,11 +384,11 @@ select option {
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: rgba(13, 17, 26, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(13, 17, 26, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid rgba(212, 175, 55, 0.25);
   display: flex;
   justify-content: space-around;
@@ -479,14 +402,14 @@ select option {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   background: transparent;
   border: none;
   color: var(--text-muted);
   font-size: 0.72rem;
   font-weight: 500;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 6px 8px;
   border-radius: 8px;
   transition: all 0.2s;
   flex: 1;

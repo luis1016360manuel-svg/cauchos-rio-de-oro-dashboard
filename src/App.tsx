@@ -84,24 +84,15 @@ function App() {
       <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
         
         {/* Top Header Navigation */}
-        <header className="app-header" style={{ 
-          padding: '16px 32px', 
-          background: 'rgba(255,255,255,0.02)', 
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          width: '100%',
-          boxSizing: 'border-box'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--gold-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontWeight: 800, color: '#07090e', fontSize: '1.1rem' }}>RO</span>
+        <header className="app-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, minWidth: 0 }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--gold-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontWeight: 800, color: '#07090e', fontSize: '1.05rem' }}>RO</span>
             </div>
-            <span className="header-brand-text" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>Rio de Oro</span>
+            <span className="header-brand-text" style={{ fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>Rio de Oro</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
             <nav className="desktop-nav" style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: 'var(--radius-full)' }}>
               <button
                 onClick={() => setCurrentView('INVOICES')}
