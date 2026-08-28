@@ -415,8 +415,25 @@ select option {
   }
 
   /* Responsive header layout */
+  .app-header {
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+
+  .header-brand-text {
+    font-size: 1.05rem !important;
+  }
+
+  .header-user-info {
+    display: none !important;
+  }
+
   .desktop-nav {
     display: none !important;
+  }
+
+  .header-actions-wrapper {
+    gap: 8px !important;
   }
 
   .mobile-nav-bottom {

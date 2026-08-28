@@ -84,22 +84,24 @@ function App() {
       <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column' }}>
         
         {/* Top Header Navigation */}
-        <header style={{ 
+        <header className="app-header" style={{ 
           padding: '16px 32px', 
           background: 'rgba(255,255,255,0.02)', 
           borderBottom: '1px solid var(--border-color)',
           display: 'flex', 
           justifyContent: 'space-between', 
-          alignItems: 'center'
+          alignItems: 'center',
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--gold-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontWeight: 800, color: '#07090e', fontSize: '1.2rem' }}>RO</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--gold-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontWeight: 800, color: '#07090e', fontSize: '1.1rem' }}>RO</span>
             </div>
-            <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>Rio de Oro</span>
+            <span className="header-brand-text" style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>Rio de Oro</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <nav className="desktop-nav" style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: 'var(--radius-full)' }}>
               <button
                 onClick={() => setCurrentView('INVOICES')}
@@ -154,7 +156,7 @@ function App() {
               )}
             </nav>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '0.9rem' }}>
+            <div className="header-user-info" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '0.9rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)' }}>
                 <User size={16} color="var(--gold-light)" />
               </div>
@@ -164,18 +166,18 @@ function App() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="header-actions-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
               {/* AI Settings Button */}
               <button
                 onClick={() => setIsAISettingsOpen(true)}
                 title="Configuración de Inteligencia Artificial"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  padding: '7px 12px', borderRadius: 'var(--radius-full)',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '6px 10px', borderRadius: 'var(--radius-full)',
                   background: hasApiKey ? 'rgba(212,175,55,0.1)' : 'rgba(239,68,68,0.1)',
                   border: `1px solid ${hasApiKey ? 'rgba(212,175,55,0.3)' : 'rgba(239,68,68,0.3)'}`,
                   color: hasApiKey ? 'var(--gold-light)' : '#f87171',
-                  cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.82rem', fontWeight: 600
+                  cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.8rem', fontWeight: 600
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.background = hasApiKey ? 'rgba(212,175,55,0.2)' : 'rgba(239,68,68,0.2)';
@@ -185,35 +187,36 @@ function App() {
                 }}
               >
                 <Sparkles size={14} />
-                <span>IA {hasApiKey ? '✓' : '!'}</span>
+                <span>IA</span>
               </button>
 
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '36px', height: '36px', borderRadius: '50%',
+                  width: '34px', height: '34px', borderRadius: '50%',
                   background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
-                  color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s'
+                  color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
                 }}
                 onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-dim)'; }}
                 onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
                 title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
               >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
               </button>
 
               <button 
                 onClick={handleLogout}
                 style={{ 
-                  display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
+                  display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', 
                   borderRadius: 'var(--radius-full)', background: 'transparent', border: '1px solid var(--border-color)', 
-                  color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem'
+                  color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem', flexShrink: 0
                 }}
                 onMouseOver={(e) => { e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.borderColor = 'var(--text-dim)'; }}
                 onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+                title="Cerrar sesión"
               >
-                <LogOut size={14} />
+                <LogOut size={15} />
                 <span className="hide-on-mobile">{t.logout}</span>
               </button>
             </div>
