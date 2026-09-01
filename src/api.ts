@@ -248,6 +248,37 @@ export const addCompany = async (company: Company): Promise<Company> => {
   return company;
 };
 
+export const updateCompany = async (company: Company, oldName?: string): Promise<Company> => {
+  const { error: compError } = await supabase
+    .from('companies')
+    .update({
+      name: company.name,
+      taxId: company.taxId || null,
+      phone: company.phone || null,
+      address: company.address || null
+    })
+    .eq('id', company.id);
+
+  if (compError) {
+    console.error('Update company error:', compError);
+    throw new Error('Failed to update company');
+  }
+
+  // Cascade update to invoices if the company name has changed
+  if (oldName && oldName.trim().toLowerCase() !== company.name.trim().toLowerCase()) {
+    const { error: invError } = await supabase
+      .from('invoices')
+      .update({ clientName: company.name.trim() })
+      .ilike('clientName', oldName.trim());
+
+    if (invError) {
+      console.warn('Cascade update invoices warning:', invError);
+    }
+  }
+
+  return company;
+};
+
 export const deleteCompany = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('companies')

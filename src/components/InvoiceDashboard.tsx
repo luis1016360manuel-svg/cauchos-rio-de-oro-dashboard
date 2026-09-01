@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FileText, CheckCircle2, AlertCircle, Clock, Search, Filter, PlusCircle, Building2, Trash2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import { fetchInvoices, addInvoice, updateInvoice, softDeleteInvoice, restoreInvoice, permanentlyDeleteInvoice, fetchCompanies, addCompany, deleteCompany, checkDuplicateInvoice } from '../api';
+import { fetchInvoices, addInvoice, updateInvoice, softDeleteInvoice, restoreInvoice, permanentlyDeleteInvoice, fetchCompanies, addCompany, updateCompany, deleteCompany, checkDuplicateInvoice } from '../api';
 import type { Company } from '../api';
 import { AddInvoiceForm } from './AddInvoiceForm';
 import { EditInvoiceModal } from './EditInvoiceModal';
@@ -203,6 +203,21 @@ export const InvoiceDashboard: React.FC = () => {
     const compToSave = { ...newComp, id: tempId };
     const saved = await addCompany(compToSave);
     setCompanies(prev => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)));
+  };
+
+  const handleUpdateCompany = async (updatedComp: Company, oldName?: string) => {
+    const saved = await updateCompany(updatedComp, oldName);
+    setCompanies(prev => prev.map(c => c.id === saved.id ? saved : c).sort((a, b) => a.name.localeCompare(b.name)));
+    
+    // If company name was modified, immediately cascade update local invoices state
+    if (oldName && oldName.trim().toLowerCase() !== saved.name.trim().toLowerCase()) {
+      setInvoices(prev => prev.map(inv => {
+        if (inv.clientName.trim().toLowerCase() === oldName.trim().toLowerCase()) {
+          return { ...inv, clientName: saved.name.trim() };
+        }
+        return inv;
+      }));
+    }
   };
 
   const handleDeleteCompany = async (id: string) => {
@@ -838,6 +853,7 @@ export const InvoiceDashboard: React.FC = () => {
         <CompanyManagerModal
           companies={companies}
           onAdd={handleAddCompany}
+          onUpdate={handleUpdateCompany}
           onDelete={handleDeleteCompany}
           onClose={() => setIsCompanyModalOpen(false)}
         />
