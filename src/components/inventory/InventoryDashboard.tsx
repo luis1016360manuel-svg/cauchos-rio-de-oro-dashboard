@@ -469,93 +469,97 @@ export const InventoryDashboard: React.FC = () => {
               />
             </div>
             
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Medida</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Rin</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Costo</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Precio</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600 }}>Stock</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    <Search size={48} color="var(--text-dim)" style={{ margin: '0 auto 16px auto', opacity: 0.3 }} />
-                    <p>{searchQuery ? 'No se encontraron cauchos con ese criterio de búsqueda.' : 'No hay artículos en el inventario'}</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredItems.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', transition: 'background 0.2s' }}>
-                    <td style={{ padding: '16px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{item.brand}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{item.model}</div>
-                    </td>
-                    <td style={{ padding: '16px', color: 'var(--text-main)' }}>{item.size}</td>
-                    <td style={{ padding: '16px', color: 'var(--text-main)' }}>{item.rim ? `R${item.rim}` : '-'}</td>
-                    <td style={{ padding: '16px', color: 'var(--text-main)' }}>{formatCurrency(item.unitCost)}</td>
-                    <td style={{ padding: '16px', color: 'var(--gold-light)', fontWeight: 600 }}>{formatCurrency(item.sellingPrice)}</td>
-                    <td style={{ padding: '16px' }}>
-                      <div 
-                        onClick={() => setLoadingItem(item)}
-                        title="Haz clic para cargar más stock"
-                        style={{ 
-                          display: 'inline-flex', alignItems: 'center', gap: '8px', 
-                          cursor: 'pointer', padding: '4px 8px', borderRadius: '6px',
-                          background: item.quantity === 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                          border: '1px solid transparent',
-                          transition: 'border-color 0.2s'
-                        }}
-                        onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-                        onMouseOut={e => e.currentTarget.style.borderColor = 'transparent'}
-                      >
-                        <span style={{ 
-                          fontWeight: 700, 
-                          color: item.quantity === 0 ? '#ef4444' : (item.quantity < 5 ? '#f59e0b' : 'var(--text-main)') 
-                        }}>
-                          {item.quantity} u.
-                        </span>
-                        {item.quantity === 0 && (
-                          <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ef4444', color: '#fff', borderRadius: '4px', fontWeight: 600 }}>AGOTADO</span>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button 
-                          onClick={() => setLoadingItem(item)}
-                          title="Cargar (Ingresar nueva mercancía)"
-                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', cursor: 'pointer' }}
-                        >
-                          <ArrowUpRight size={16} />
-                        </button>
-                        <button 
-                          onClick={() => setDischargingItem(item)}
-                          title="Descargar (Vender)"
-                          disabled={item.quantity === 0}
-                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'none', cursor: item.quantity > 0 ? 'pointer' : 'not-allowed', opacity: item.quantity > 0 ? 1 : 0.5 }}
-                        >
-                          <ArrowDownRight size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteItem(item.id)}
-                          title="Eliminar"
-                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+            <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Medida</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Rin</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Costo</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Precio</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Stock</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <Search size={48} color="var(--text-dim)" style={{ margin: '0 auto 16px auto', opacity: 0.3 }} />
+                        <p>{searchQuery ? 'No se encontraron cauchos con ese criterio de búsqueda.' : 'No hay artículos en el inventario'}</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '16px', fontWeight: 600, color: 'var(--text-main)' }}>
+                          <div>{item.brand}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{item.model}</div>
+                        </td>
+                        <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{item.size}</td>
+                        <td style={{ padding: '16px', color: 'var(--text-muted)' }}>{item.rim || '-'}</td>
+                        <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
+                          {item.unitCost !== undefined ? formatCurrency(item.unitCost) : '-'}
+                        </td>
+                        <td style={{ padding: '16px', fontWeight: 600, color: 'var(--gold-light)' }}>
+                          {formatCurrency(item.sellingPrice)}
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ 
+                              fontWeight: 700, 
+                              color: item.quantity <= 5 ? '#ef4444' : '#10b981',
+                              fontSize: '1.05rem' 
+                            }}>
+                              {item.quantity} u.
+                            </span>
+                            {item.quantity <= 5 && (
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px', 
+                                background: 'rgba(239, 68, 68, 0.15)', 
+                                color: '#ef4444', 
+                                border: '1px solid rgba(239, 68, 68, 0.3)' 
+                              }}>
+                                Bajo
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                            <button 
+                              onClick={() => setLoadingItem(item)}
+                              title="Cargar (Ingresar nueva mercancía)"
+                              style={{ padding: '8px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: 'none', cursor: 'pointer' }}
+                            >
+                              <ArrowUpRight size={16} />
+                            </button>
+                            <button 
+                              onClick={() => setDischargingItem(item)}
+                              title="Descargar (Vender)"
+                              disabled={item.quantity === 0}
+                              style={{ padding: '8px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'none', cursor: item.quantity > 0 ? 'pointer' : 'not-allowed', opacity: item.quantity > 0 ? 1 : 0.5 }}
+                            >
+                              <ArrowDownRight size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteItem(item.id)}
+                              title="Eliminar"
+                              style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
 
@@ -592,56 +596,58 @@ export const InventoryDashboard: React.FC = () => {
               </span>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha / Hora</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Anterior</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Nueva</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Ingreso (+u)</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedLoadedHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No hay historial de cargas para el período seleccionado.
-                    </td>
+            <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha / Hora</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Anterior</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cant. Nueva</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Ingreso (+u)</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
                   </tr>
-                ) : (
-                  paginatedLoadedHistory.map(item => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
-                        {new Date(item.createdAt || item.created_at || new Date()).toLocaleString('es-ES')}
-                      </td>
-                      <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: 600 }}>
-                        {item.brand} - {item.size}
-                      </td>
-                      <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
-                        {item.cantidad_anterior} u.
-                      </td>
-                      <td style={{ padding: '16px', color: 'var(--text-main)' }}>
-                        {item.cantidad_nueva} u.
-                      </td>
-                      <td style={{ padding: '16px', color: '#10b981', fontWeight: 700 }}>
-                        + {item.cantidad_nueva - item.cantidad_anterior} u.
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => handleDeleteLog(item.id)}
-                          title="Eliminar Registro"
-                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                </thead>
+                <tbody>
+                  {paginatedLoadedHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No hay historial de cargas para el período seleccionado.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    paginatedLoadedHistory.map(item => (
+                      <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                        <td style={{ padding: '16px', color: 'var(--text-muted)' }}>
+                          {new Date(item.createdAt || item.created_at || new Date()).toLocaleString('es-ES')}
+                        </td>
+                        <td style={{ padding: '16px', color: 'var(--text-main)', fontWeight: 600 }}>
+                          {item.brand} - {item.size}
+                        </td>
+                        <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
+                          {item.cantidad_anterior} u.
+                        </td>
+                        <td style={{ padding: '16px', color: 'var(--text-main)' }}>
+                          {item.cantidad_nueva} u.
+                        </td>
+                        <td style={{ padding: '16px', color: '#10b981', fontWeight: 700 }}>
+                          + {item.cantidad_nueva - item.cantidad_anterior} u.
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => handleDeleteLog(item.id)}
+                            title="Eliminar Registro"
+                            style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pagination Controls */}
             {totalPagesIn > 1 && (
@@ -715,56 +721,58 @@ export const InventoryDashboard: React.FC = () => {
               </span>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Descargado</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Descarga</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Quedaron</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Ref.</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedDischargedHistory.length === 0 ? (
-                  <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas para este período</td></tr>
-                ) : (
-                  paginatedDischargedHistory.map(record => (
-                    <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                      <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
-                        {new Date(record.dischargedAt).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '16px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{record.brand} {record.model}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
-                      </td>
-                      <td style={{ padding: '16px' }}>
-                        <span style={{ color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <ArrowDownRight size={14} /> -{record.quantityDischarged} u.
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px', color: '#3b82f6', fontWeight: 700 }}>
-                        {record.remainingQuantity !== undefined ? `${record.remainingQuantity} u.` : '-'}
-                      </td>
-                      <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
-                        <div>{record.clientName || '-'}</div>
-                        <div style={{ fontSize: '0.8rem' }}>{record.invoiceReference || ''}</div>
-                      </td>
-                      <td style={{ padding: '16px', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => handleDeleteDischarge(record.id)}
-                          title="Eliminar Registro"
-                          style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Fecha</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Artículo Descargado</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Descarga</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Quedaron</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>Cliente / Ref.</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedDischargedHistory.length === 0 ? (
+                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay historial de descargas para este período</td></tr>
+                  ) : (
+                    paginatedDischargedHistory.map(record => (
+                      <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                        <td style={{ padding: '16px', color: 'var(--text-dim)', fontSize: '0.9rem' }}>
+                          {new Date(record.dischargedAt).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{record.brand} {record.model}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{record.size}</div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <span style={{ color: '#ef4444', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <ArrowDownRight size={14} /> -{record.quantityDischarged} u.
+                          </span>
+                        </td>
+                        <td style={{ padding: '16px', color: '#3b82f6', fontWeight: 700 }}>
+                          {record.remainingQuantity !== undefined ? `${record.remainingQuantity} u.` : '-'}
+                        </td>
+                        <td style={{ padding: '16px', color: 'var(--text-dim)' }}>
+                          <div>{record.clientName || '-'}</div>
+                          <div style={{ fontSize: '0.8rem' }}>{record.invoiceReference || ''}</div>
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => handleDeleteDischarge(record.id)}
+                            title="Eliminar Registro"
+                            style={{ padding: '8px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pagination Controls */}
             {totalPagesOut > 1 && (
