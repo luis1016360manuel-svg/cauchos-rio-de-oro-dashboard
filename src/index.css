@@ -84,7 +84,6 @@ html {
   max-width: 100%;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
 }
 
 body {
@@ -99,7 +98,6 @@ body {
   background-attachment: fixed;
   overflow-x: hidden;
   position: relative;
-  touch-action: manipulation;
 }
 
 #root {
