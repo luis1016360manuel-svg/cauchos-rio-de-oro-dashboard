@@ -18,6 +18,47 @@ interface EditInvoiceModalProps {
   onLocalSync?: (invoice: Invoice) => void;
 }
 
+const formatPaymentDateTime = (fechaAbono: string, createdAt?: string): string => {
+  if (!fechaAbono) return 'Fecha desconocida';
+
+  // If fecha_abono is UTC midnight (old records from date-only UTC conversion)
+  if (fechaAbono.includes('T00:00:00')) {
+    if (createdAt) {
+      const createdDate = new Date(createdAt);
+      if (!isNaN(createdDate.getTime())) {
+        return createdDate.toLocaleString('es-VE', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+      }
+    }
+    const datePart = fechaAbono.split('T')[0];
+    const parts = datePart.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${d}/${m}/${y}`;
+    }
+  }
+
+  const d = new Date(fechaAbono);
+  if (isNaN(d.getTime())) return fechaAbono;
+
+  return d.toLocaleString('es-VE', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+};
+
 export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onUpdate, onDelete, onClose, onImageClick, companies, onManageCompanies, onLocalSync }) => {
   const [clientName, setClientName] = useState(invoice.clientName);
   const [invoiceCode, setInvoiceCode] = useState(invoice.invoiceCode);
@@ -340,7 +381,7 @@ export const EditInvoiceModal: React.FC<EditInvoiceModalProps> = ({ invoice, onU
               {payments.map(p => (
                 <div key={p.id} style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{new Date(p.fecha_abono).toLocaleString('es-ES')}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{formatPaymentDateTime(p.fecha_abono, p.created_at)}</div>
                     <div style={{ fontWeight: 800, color: 'var(--gold-light)' }}>${p.monto.toFixed(2)}</div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

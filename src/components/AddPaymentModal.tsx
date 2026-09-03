@@ -79,10 +79,26 @@ export const AddPaymentModal: React.FC<AddPaymentModalProps> = ({ invoice, pendi
 
     setIsSubmitting(true);
     try {
+      // Build ISO string preserving local time (to prevent UTC midnight shifting to previous day 8pm)
+      let finalFechaAbono = new Date().toISOString();
+      if (fechaAbono) {
+        if (fechaAbono.includes('T')) {
+          finalFechaAbono = new Date(fechaAbono).toISOString();
+        } else {
+          const parts = fechaAbono.split('-').map(Number);
+          if (parts.length === 3) {
+            const [y, m, d] = parts;
+            const now = new Date();
+            const localDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
+            finalFechaAbono = localDate.toISOString();
+          }
+        }
+      }
+
       await addPayment({
         invoice_id: invoice.id,
         monto: montoNum,
-        fecha_abono: new Date(fechaAbono).toISOString(),
+        fecha_abono: finalFechaAbono,
         metodo_pago: metodoPago,
         referencia: referencia,
         notas: notas
