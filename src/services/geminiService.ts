@@ -1,4 +1,4 @@
-﻿import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 const API_KEY_STORAGE_KEY = 'GEMINI_API_KEY';
 
@@ -136,10 +136,21 @@ export const generateWithAIFallback = async (
 export const parseAIJsonResponse = <T>(rawText: string): T => {
   let text = rawText.trim();
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start !== -1 && end !== -1) {
-    text = text.substring(start, end + 1);
+  
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  
+  if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+    const lastBracket = text.lastIndexOf(']');
+    if (lastBracket !== -1) {
+      text = text.substring(firstBracket, lastBracket + 1);
+    }
+  } else if (firstBrace !== -1) {
+    const lastBrace = text.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      text = text.substring(firstBrace, lastBrace + 1);
+    }
   }
+  
   return JSON.parse(text) as T;
 };

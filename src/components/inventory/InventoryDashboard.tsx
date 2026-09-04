@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers, Brain, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { PackageSearch, ArrowUpRight, PlusCircle, ArrowDownRight, Trash2, Search, Printer, Layers, Brain, ChevronLeft, ChevronRight, Calendar, Camera } from 'lucide-react';
 import type { InventoryItem, DischargedItem } from './InventoryTypes';
-import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, deleteInventoryLog, deleteInventoryDischarge } from './inventoryApi';
+import { fetchInventory, deleteInventoryItem, fetchDischargedHistory, fetchLoadedHistory, dischargeInventory, quickAddOrUpdateInventoryItem, batchQuickAddInventoryItems, deleteInventoryLog, deleteInventoryDischarge } from './inventoryApi';
 import { QuickAddModal } from './QuickAddModal';
 import { DischargeStockModal } from './DischargeStockModal';
 import { AddStockModal } from './AddStockModal';
@@ -10,6 +10,9 @@ import { generateInventoryPDF } from './pdfGenerator';
 import { InventoryAIPanel } from './InventoryAIPanel';
 import { analyzeInventoryWithAI } from './inventoryAnalyzer';
 import type { AIInventoryAnalysis } from './inventoryAnalyzer';
+import { scanInventoryFromImageWithAI } from './inventoryAiScanner';
+import type { ScannedTireItem } from './inventoryAiScanner';
+import { AIStockScanConfirmModal } from './AIStockScanConfirmModal';
 import { toastService } from '../Toast';
 
 export const InventoryDashboard: React.FC = () => {
@@ -49,6 +52,67 @@ export const InventoryDashboard: React.FC = () => {
     // Auto-run on first open if no prior analysis
     if (!aiAnalysis && !aiLoading) {
       handleRunAIAnalysis();
+    }
+  };
+
+  // ── AI Photo Batch Scan State & Handlers ──
+  const aiScanInputRef = useRef<HTMLInputElement>(null);
+  const [isScanningAI, setIsScanningAI] = useState(false);
+  const [scannedItems, setScannedItems] = useState<ScannedTireItem[]>([]);
+  const [scannedImagePreviewUrl, setScannedImagePreviewUrl] = useState<string | null>(null);
+  const [isScanConfirmModalOpen, setIsScanConfirmModalOpen] = useState(false);
+
+  const handleAIScanFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setScannedImagePreviewUrl(previewUrl);
+
+    setIsScanningAI(true);
+    toastService.info('Analizando foto con IA... Extrayendo cauchos y cantidades.');
+
+    try {
+      const extracted = await scanInventoryFromImageWithAI(file);
+      setScannedItems(extracted);
+      setIsScanConfirmModalOpen(true);
+      toastService.success(`Se detectaron ${extracted.length} medida(s) de cauchos. Revisa los datos antes de confirmar.`);
+    } catch (err: any) {
+      console.error('AI Scan Error:', err);
+      toastService.error(err.message || 'Error al escanear la foto.');
+    } finally {
+      setIsScanningAI(false);
+      if (aiScanInputRef.current) aiScanInputRef.current.value = '';
+    }
+  };
+
+  const handleBatchConfirmLoad = async (itemsToConfirm: ScannedTireItem[]) => {
+    try {
+      const itemsToLoad = itemsToConfirm.map(it => ({
+        brand: it.brand.trim(),
+        model: it.model.trim() || 'Radial',
+        size: it.size.trim(),
+        rim: Number(it.rim) || 15,
+        unitCost: Number(it.unitCost) || 0,
+        sellingPrice: Number(it.sellingPrice) || 0,
+        quantity: Math.max(1, Number(it.quantity) || 1)
+      }));
+
+      await batchQuickAddInventoryItems(itemsToLoad);
+
+      const [freshItems, freshHistory] = await Promise.all([
+        fetchInventory(),
+        fetchLoadedHistory()
+      ]);
+      setItems(freshItems);
+      setLoadedHistory(freshHistory);
+
+      const totalQty = itemsToLoad.reduce((s, it) => s + it.quantity, 0);
+      toastService.success(`¡Éxito! Se ingresaron ${totalQty} cauchos al inventario.`);
+    } catch (e: any) {
+      console.error('Error confirming scanned batch:', e);
+      toastService.error(e.message || 'Error al procesar el lote de cauchos');
+      throw e;
     }
   };
 
@@ -382,6 +446,36 @@ export const InventoryDashboard: React.FC = () => {
             <span className="hide-on-mobile">Análisis IA</span>
           </button>
           
+          {/* Hidden File Input for AI Photo Scanning */}
+          <input
+            type="file"
+            ref={aiScanInputRef}
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleAIScanFileChange}
+          />
+
+          <button 
+            onClick={() => aiScanInputRef.current?.click()}
+            disabled={isScanningAI}
+            style={{ 
+              padding: '10px 20px', borderRadius: 'var(--radius-full)', 
+              background: isScanningAI 
+                ? 'rgba(212,175,55,0.25)' 
+                : 'linear-gradient(135deg, rgba(212,175,55,0.18), rgba(245,158,11,0.25))',
+              border: '1px solid rgba(212,175,55,0.5)',
+              color: 'var(--gold-light)', 
+              fontWeight: 600, cursor: isScanningAI ? 'wait' : 'pointer', 
+              display: 'flex', alignItems: 'center', gap: '8px',
+              boxShadow: '0 2px 10px rgba(212,175,55,0.15)',
+              transition: 'all 0.2s'
+            }}
+            title="Toma o sube una foto de una factura, nota de entrega o lista de cauchos para cargarlos con IA"
+          >
+            <Camera size={18} />
+            <span>{isScanningAI ? 'Escaneando...' : 'Cargar por Foto (IA)'}</span>
+          </button>
+
           <button 
             onClick={() => setIsAddModalOpen(true)}
             style={{ 
@@ -835,6 +929,21 @@ export const InventoryDashboard: React.FC = () => {
           item={dischargingItem}
           onClose={() => setDischargingItem(null)}
           onDischarge={handleDischargeSubmit}
+        />
+      )}
+
+      {isScanConfirmModalOpen && (
+        <AIStockScanConfirmModal
+          isOpen={isScanConfirmModalOpen}
+          scannedItems={scannedItems}
+          existingInventory={items}
+          imagePreviewUrl={scannedImagePreviewUrl}
+          onClose={() => {
+            setIsScanConfirmModalOpen(false);
+            setScannedItems([]);
+            setScannedImagePreviewUrl(null);
+          }}
+          onConfirmBatch={handleBatchConfirmLoad}
         />
       )}
 

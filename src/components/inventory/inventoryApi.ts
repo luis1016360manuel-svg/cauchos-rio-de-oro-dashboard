@@ -117,6 +117,24 @@ export const quickAddOrUpdateInventoryItem = async (
   return data as InventoryItem;
 };
 
+export const batchQuickAddInventoryItems = async (
+  items: Array<Omit<InventoryItem, 'id' | 'createdAt'>>
+): Promise<{ successCount: number; updatedItems: InventoryItem[] }> => {
+  const updatedItems: InventoryItem[] = [];
+  
+  for (const item of items) {
+    if (item.quantity <= 0) continue;
+    const { quantity, ...itemData } = item;
+    const result = await quickAddOrUpdateInventoryItem(itemData, quantity);
+    updatedItems.push(result);
+  }
+
+  return {
+    successCount: updatedItems.length,
+    updatedItems
+  };
+};
+
 export const updateInventoryItem = async (item: InventoryItem): Promise<InventoryItem> => {
   const { data, error } = await supabase
     .from('inventory_items')
