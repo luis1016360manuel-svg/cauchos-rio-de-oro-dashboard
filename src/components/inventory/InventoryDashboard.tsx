@@ -13,6 +13,7 @@ import type { AIInventoryAnalysis } from './inventoryAnalyzer';
 import { scanInventoryFromImageWithAI } from './inventoryAiScanner';
 import type { ScannedTireItem } from './inventoryAiScanner';
 import { AIStockScanConfirmModal } from './AIStockScanConfirmModal';
+import { LiveCameraScannerModal } from './LiveCameraScannerModal';
 import { toastService } from '../Toast';
 
 export const InventoryDashboard: React.FC = () => {
@@ -58,19 +59,17 @@ export const InventoryDashboard: React.FC = () => {
   // ── AI Photo Batch Scan State & Handlers ──
   const aiScanInputRef = useRef<HTMLInputElement>(null);
   const [isScanningAI, setIsScanningAI] = useState(false);
+  const [isLiveCameraOpen, setIsLiveCameraOpen] = useState(false);
   const [scannedItems, setScannedItems] = useState<ScannedTireItem[]>([]);
   const [scannedImagePreviewUrl, setScannedImagePreviewUrl] = useState<string | null>(null);
   const [isScanConfirmModalOpen, setIsScanConfirmModalOpen] = useState(false);
 
-  const handleAIScanFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processImageFile = async (file: File) => {
     const previewUrl = URL.createObjectURL(file);
     setScannedImagePreviewUrl(previewUrl);
 
     setIsScanningAI(true);
-    toastService.info('Analizando foto con IA... Extrayendo cauchos y cantidades.');
+    toastService.info('Analizando imagen con IA... Extrayendo cauchos y cantidades.');
 
     try {
       const extracted = await scanInventoryFromImageWithAI(file);
@@ -79,11 +78,23 @@ export const InventoryDashboard: React.FC = () => {
       toastService.success(`Se detectaron ${extracted.length} medida(s) de cauchos. Revisa los datos antes de confirmar.`);
     } catch (err: any) {
       console.error('AI Scan Error:', err);
-      toastService.error(err.message || 'Error al escanear la foto.');
+      toastService.error(err.message || 'Error al escanear la imagen.');
     } finally {
       setIsScanningAI(false);
       if (aiScanInputRef.current) aiScanInputRef.current.value = '';
     }
+  };
+
+  const handleAIScanFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+  };
+
+  const handleLiveCameraCapture = (file: File) => {
+    setIsLiveCameraOpen(false);
+    processImageFile(file);
   };
 
   const handleBatchConfirmLoad = async (itemsToConfirm: ScannedTireItem[]) => {
@@ -451,12 +462,13 @@ export const InventoryDashboard: React.FC = () => {
             type="file"
             ref={aiScanInputRef}
             accept="image/*"
+            capture="environment"
             style={{ display: 'none' }}
             onChange={handleAIScanFileChange}
           />
 
           <button 
-            onClick={() => aiScanInputRef.current?.click()}
+            onClick={() => setIsLiveCameraOpen(true)}
             disabled={isScanningAI}
             style={{ 
               padding: '10px 20px', borderRadius: 'var(--radius-full)', 
@@ -470,10 +482,10 @@ export const InventoryDashboard: React.FC = () => {
               boxShadow: '0 2px 10px rgba(212,175,55,0.15)',
               transition: 'all 0.2s'
             }}
-            title="Toma o sube una foto de una factura, nota de entrega o lista de cauchos para cargarlos con IA"
+            title="Escanear en vivo con cámara o subir foto para cargar cauchos con IA"
           >
             <Camera size={18} />
-            <span>{isScanningAI ? 'Escaneando...' : 'Cargar por Foto (IA)'}</span>
+            <span>{isScanningAI ? 'Escaneando...' : 'Escanear con Cámara (IA)'}</span>
           </button>
 
           <button 
@@ -929,6 +941,15 @@ export const InventoryDashboard: React.FC = () => {
           item={dischargingItem}
           onClose={() => setDischargingItem(null)}
           onDischarge={handleDischargeSubmit}
+        />
+      )}
+
+      {isLiveCameraOpen && (
+        <LiveCameraScannerModal
+          isOpen={isLiveCameraOpen}
+          onClose={() => setIsLiveCameraOpen(false)}
+          onCapture={handleLiveCameraCapture}
+          onSelectFile={() => aiScanInputRef.current?.click()}
         />
       )}
 
